@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  PJ
+  MENTOR
+}
+
+enum PertemuanStatus {
+  TERJADWAL
+  SELESAI
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  role               Role
+  name               String
+  username           String   @unique
+  passwordHash       String
+  mustChangePassword Boolean  @default(true)
+  email              String?
+  phone              String?
+  bio                String?
+  photoUrl           String?
+  faculty            String?
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  kelompokMentored Kelompok[]    @relation("MentorKelompok")
+  activityLogs     ActivityLog[]
+  auditLogs        AuditLog[]
+  pengumuman       Pengumuman[]
+}
+
+model Kelompok {
+  id        String      @id @default(cuid())
+  name      String
+  faculty   String
+  mentorId  String?
+  mentor    User?       @relation("MentorKelompok", fields: [mentorId], references: [id])
+  praktikan Praktikan[]
+  pertemuan Pertemuan[]
+  createdAt DateTime    @default(now())
+}
+
+model Praktikan {
+  id         String    @id @default(cuid())
+  nim        String
+  name       String
+  kelompokId String
+  kelompok   Kelompok  @relation(fields: [kelompokId], references: [id], onDelete: Cascade)
+  absensi    Absensi[]
+
+  @@unique([kelompokId, nim])
+}
+
+model KalenderPraktikum {
+  id            String   @id @default("singleton")
+  tahunAkademik String
+  semester      String
+  totalMinggu   Int
+  currentWeek   Int
+  updatedAt     DateTime @updatedAt
+}
+
+model Materi {
+  id        String @id @default(cuid())
+  week      Int    @unique
+  tahsin    String
+  keislaman String
+}
+
+model Pertemuan {
+  id            String          @id @default(cuid())
+  kelompokId    String
+  kelompok      Kelompok        @relation(fields: [kelompokId], references: [id], onDelete: Cascade)
+  week          Int
+  date          DateTime
+  time          String
+  location      String
+  status        PertemuanStatus @default(TERJADWAL)
+  qrToken       String?         @unique
+  qrActivatedAt DateTime?
+  qrDurationMin Int?
+  absensi       Absensi[]
+  beritaAcara   BeritaAcara?
+  dokumentasi   Dokumentasi[]
+  createdAt     DateTime        @default(now())
+
+  @@unique([kelompokId, week])
+}
+
+model Absensi {
+  id          String    @id @default(cuid())
+  pertemuanId String
+  pertemuan   Pertemuan @relation(fields: [pertemuanId], references: [id], onDelete: Cascade)
+  praktikanId String
+  praktikan   Praktikan @relation(fields: [praktikanId], references: [id], onDelete: Cascade)
+  scannedAt   DateTime  @default(now())
+
+  @@unique([pertemuanId, praktikanId])
+}
+
+model BeritaAcara {
+  id          String    @id @default(cuid())
+  pertemuanId String    @unique
+  pertemuan   Pertemuan @relation(fields: [pertemuanId], references: [id], onDelete: Cascade)
+  hari        String
+  tanggal     DateTime
+  lokasi      String
+  materi      String
+  catatan     String?
+  hadir       Int
+  tidakHadir  Int
+  filledAt    DateTime  @default(now())
+}
+
+model Dokumentasi {
+  id          String    @id @default(cuid())
+  pertemuanId String
+  pertemuan   Pertemuan @relation(fields: [pertemuanId], references: [id], onDelete: Cascade)
+  url         String
+  uploadedAt  DateTime  @default(now())
+}
+
+model Settings {
+  id                String @id @default("singleton")
+  appName           String @default("SIMONEV PAI")
+  qrDurationMinutes Int    @default(10)
+  maxPhotos         Int    @default(3)
+  defaultTheme      String @default("light")
+}
+
+model ActivityLog {
+  id     String   @id @default(cuid())
+  text   String
+  userId String?
+  user   User?    @relation(fields: [userId], references: [id])
+  at     DateTime @default(now())
+}
+
+model AuditLog {
+  id     String   @id @default(cuid())
+  entity String
+  action String
+  detail String
+  userId String?
+  user   User?    @relation(fields: [userId], references: [id])
+  at     DateTime @default(now())
+}
+
+model Archive {
+  id             String   @id @default(cuid())
+  tahunAkademik  String
+  semester       String
+  totalPertemuan Int
+  archivedAt     DateTime @default(now())
+}
+
+model Pengumuman {
+  id             String   @id @default(cuid())
+  title          String
+  body           String
+  targetFaculty  String? // null = untuk semua fakultas
+  attachmentUrl  String?
+  attachmentName String?
+  authorId       String
+  author         User     @relation(fields: [authorId], references: [id])
+  createdAt      DateTime @default(now())
+}
