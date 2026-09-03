@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 
-type Praktikan = { id: string; nim: string; name: string; done: boolean };
+type Praktikan = { id: string; npm: string; name: string; done: boolean };
 
 export function ScanClient({ token, praktikan }: { token: string; praktikan: Praktikan[] }) {
   const [state, setState] = useState<Record<string, "idle" | "loading" | "done" | "error">>({});
@@ -42,7 +42,7 @@ export function ScanClient({ token, praktikan }: { token: string; praktikan: Pra
               done ? "bg-primary-soft border-primary text-primary-hover font-semibold" : "bg-[#f2fbf5] border-[#dcefe2]"
             }`}
           >
-            <span>{p.name} <span className="text-gray-400 font-normal">· {p.nim}</span></span>
+            <span>{p.name} <span className="text-gray-400 font-normal">· {p.npm}</span></span>
             {done ? <CheckCircle2 size={16} /> : state[p.id] === "loading" ? "…" : null}
           </button>
         );

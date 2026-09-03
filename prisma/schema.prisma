@@ -54,13 +54,16 @@ model Kelompok {
 
 model Praktikan {
   id         String    @id @default(cuid())
-  nim        String
+  npm        String
   name       String
+  fakultas   String
+  jurusan    String
+  prodi      String
   kelompokId String
   kelompok   Kelompok  @relation(fields: [kelompokId], references: [id], onDelete: Cascade)
   absensi    Absensi[]
 
-  @@unique([kelompokId, nim])
+  @@unique([kelompokId, npm])
 }
 
 model KalenderPraktikum {

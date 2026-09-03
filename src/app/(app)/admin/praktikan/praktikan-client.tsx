@@ -5,9 +5,17 @@ import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { Plus, Upload, Trash2, X, FileSpreadsheet } from "lucide-react";
 
-type PraktikanRow = { id: string; nim: string; name: string; kelompokId: string; kelompokName: string };
+type PraktikanRow = {
+  id: string; npm: string; name: string; fakultas: string; jurusan: string; prodi: string;
+  kelompokId: string; kelompokName: string;
+};
 type Kelompok = { id: string; name: string };
-type ImportRow = { nim: string; name: string };
+type ImportRow = { npm: string; name: string; fakultas: string; jurusan: string; prodi: string };
+
+// Saat ini hanya Fakultas Teknik yang melaksanakan praktikum PAI, jadi ini dipakai
+// sebagai default form — tetap bisa diganti manual kalau nanti fakultas lain menyusul.
+const DEFAULT_FAKULTAS = "Teknik";
+const FAKULTAS_OPTIONS = ["Teknik", "FMIPA", "Ekonomi & Bisnis", "Hukum", "Pertanian", "ISIP", "KIP", "Kedokteran"];
 
 export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanRow[]; kelompok: Kelompok[] }) {
   const router = useRouter();
@@ -17,7 +25,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   const list = filterK === "all" ? praktikan : praktikan.filter((p) => p.kelompokId === filterK);
 
   const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ nim: "", name: "", kelompokId: kelompok[0]?.id || "" });
+  const [addForm, setAddForm] = useState({ npm: "", name: "", fakultas: DEFAULT_FAKULTAS, jurusan: "", prodi: "", kelompokId: kelompok[0]?.id || "" });
   const [saving, setSaving] = useState(false);
 
   const [importOpen, setImportOpen] = useState(false);
@@ -25,11 +33,14 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
-  const [bulkResult, setBulkResult] = useState<{ created: number; skipped: { nim: string; name: string; reason: string }[] } | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ created: number; skipped: { npm: string; name: string; reason: string }[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const submitAdd = async () => {
-    if (!addForm.nim.trim() || !addForm.name.trim() || !addForm.kelompokId) { alert("NIM, nama, dan kelompok wajib diisi."); return; }
+    if (!addForm.npm.trim() || !addForm.name.trim() || !addForm.fakultas.trim() || !addForm.jurusan.trim() || !addForm.prodi.trim() || !addForm.kelompokId) {
+      alert("NPM, nama, fakultas, jurusan, prodi, dan kelompok wajib diisi.");
+      return;
+    }
     setSaving(true);
     const res = await fetch("/api/admin/praktikan", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(addForm),
@@ -50,7 +61,10 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
 
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet([{ NIM: "2311001", Nama: "Contoh Nama Satu" }, { NIM: "2311002", Nama: "Contoh Nama Dua" }]);
+    const ws = XLSX.utils.json_to_sheet([
+      { NPM: "2311001", Nama: "Contoh Nama Satu", Fakultas: "Teknik", Jurusan: "Teknik Elektro", Prodi: "S1 Teknik Elektro" },
+      { NPM: "2311002", Nama: "Contoh Nama Dua", Fakultas: "Teknik", Jurusan: "Teknik Informatika", Prodi: "S1 Teknik Informatika" },
+    ]);
     XLSX.utils.book_append_sheet(wb, ws, "Data");
     XLSX.writeFile(wb, "template-praktikan.xlsx");
   };
@@ -69,9 +83,15 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
         return "";
       };
       const rows: ImportRow[] = raw
-        .map((r) => ({ nim: norm(r, ["nim"]), name: norm(r, ["nama", "name"]) }))
-        .filter((r) => r.nim || r.name);
-      if (!rows.length) { setImportError("Tidak ada baris dengan kolom 'NIM'/'Nama' yang terisi."); return; }
+        .map((r) => ({
+          npm: norm(r, ["npm"]),
+          name: norm(r, ["nama", "name"]),
+          fakultas: norm(r, ["fakultas", "faculty"]) || DEFAULT_FAKULTAS,
+          jurusan: norm(r, ["jurusan"]),
+          prodi: norm(r, ["prodi", "program studi"]),
+        }))
+        .filter((r) => r.npm || r.name);
+      if (!rows.length) { setImportError("Tidak ada baris dengan kolom 'NPM'/'Nama' yang terisi."); return; }
       setImportRows(rows);
     } catch {
       setImportError("Gagal membaca file. Pastikan formatnya .xlsx atau .csv.");
@@ -106,18 +126,21 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
           <button onClick={() => { setImportError(""); setImportRows([]); setImportKelompokId(kelompok[0]?.id || ""); setImportOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2">
             <Upload size={14} /> Impor Excel
           </button>
-          <button onClick={() => { setAddForm({ nim: "", name: "", kelompokId: kelompok[0]?.id || "" }); setAddOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-primary-hover text-white rounded-lg px-3 py-2">
+          <button onClick={() => { setAddForm({ npm: "", name: "", fakultas: DEFAULT_FAKULTAS, jurusan: "", prodi: "", kelompokId: kelompok[0]?.id || "" }); setAddOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-primary-hover text-white rounded-lg px-3 py-2">
             <Plus size={14} /> Tambah Praktikan
           </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
+      <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-[11px] uppercase text-gray-400 text-left">
-              <th className="px-4 py-2.5 font-bold">NIM</th>
+              <th className="px-4 py-2.5 font-bold">NPM</th>
               <th className="px-4 py-2.5 font-bold">Nama</th>
+              <th className="px-4 py-2.5 font-bold">Fakultas</th>
+              <th className="px-4 py-2.5 font-bold">Jurusan</th>
+              <th className="px-4 py-2.5 font-bold">Prodi</th>
               <th className="px-4 py-2.5 font-bold">Kelompok</th>
               <th className="px-4 py-2.5"></th>
             </tr>
@@ -125,9 +148,12 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
           <tbody>
             {list.map((p) => (
               <tr key={p.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
-                <td className="px-4 py-2.5">{p.nim}</td>
-                <td className="px-4 py-2.5 font-semibold">{p.name}</td>
-                <td className="px-4 py-2.5">{p.kelompokName}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{p.npm}</td>
+                <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{p.name}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{p.fakultas}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{p.jurusan}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{p.prodi}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{p.kelompokName}</td>
                 <td className="px-4 py-2.5">
                   <div className="flex justify-end">
                     <button onClick={() => remove(p)} className="text-xs font-semibold flex items-center gap-1 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-lg"><Trash2 size={12} /> Hapus</button>
@@ -136,7 +162,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
               </tr>
             ))}
             {!list.length && (
-              <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400 text-xs">Tidak ada praktikan.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400 text-xs">Tidak ada praktikan.</td></tr>
             )}
           </tbody>
         </table>
@@ -145,12 +171,26 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
       {/* Add modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Tambah Praktikan">
         <label className="block mb-3">
-          <div className="text-xs font-bold text-gray-500 mb-1.5">NIM</div>
-          <input value={addForm.nim} onChange={(e) => setAddForm((f) => ({ ...f, nim: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary" />
+          <div className="text-xs font-bold text-gray-500 mb-1.5">NPM</div>
+          <input value={addForm.npm} onChange={(e) => setAddForm((f) => ({ ...f, npm: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary" />
         </label>
         <label className="block mb-3">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Nama</div>
           <input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary" />
+        </label>
+        <label className="block mb-3">
+          <div className="text-xs font-bold text-gray-500 mb-1.5">Fakultas</div>
+          <select value={addForm.fakultas} onChange={(e) => setAddForm((f) => ({ ...f, fakultas: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary">
+            {FAKULTAS_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </label>
+        <label className="block mb-3">
+          <div className="text-xs font-bold text-gray-500 mb-1.5">Jurusan</div>
+          <input value={addForm.jurusan} onChange={(e) => setAddForm((f) => ({ ...f, jurusan: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary" placeholder="cth. Teknik Elektro" />
+        </label>
+        <label className="block mb-3">
+          <div className="text-xs font-bold text-gray-500 mb-1.5">Program Studi</div>
+          <input value={addForm.prodi} onChange={(e) => setAddForm((f) => ({ ...f, prodi: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary" placeholder="cth. S1 Teknik Elektro" />
         </label>
         <label className="block">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Kelompok</div>
@@ -167,7 +207,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
       </Modal>
 
       {/* Import modal */}
-      <Modal open={importOpen} onClose={() => setImportOpen(false)} title="Impor Praktikan dari Excel" width={560}>
+      <Modal open={importOpen} onClose={() => setImportOpen(false)} title="Impor Praktikan dari Excel" width={620}>
         <label className="block mb-3">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Kelompok Tujuan</div>
           <select value={importKelompokId} onChange={(e) => setImportKelompokId(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary">
@@ -175,7 +215,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
           </select>
         </label>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-gray-500">File butuh kolom <b>NIM</b> dan <b>Nama</b>.</p>
+          <p className="text-xs text-gray-500">Kolom wajib: <b>NPM</b>, <b>Nama</b>, <b>Fakultas</b>, <b>Jurusan</b>, <b>Prodi</b>.</p>
           <button onClick={downloadTemplate} className="flex items-center gap-1 text-xs font-bold text-primary dark:text-primary-dark shrink-0">
             <FileSpreadsheet size={13} /> Unduh Template
           </button>
@@ -185,10 +225,13 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
         {importRows.length > 0 && (
           <div className="max-h-56 overflow-y-auto border border-[#dcefe2] dark:border-[#1d3527] rounded-lg mb-3">
             <table className="w-full text-xs">
-              <thead><tr className="text-left text-gray-400"><th className="px-2 py-1.5">NIM</th><th className="px-2 py-1.5">Nama</th></tr></thead>
+              <thead><tr className="text-left text-gray-400"><th className="px-2 py-1.5">NPM</th><th className="px-2 py-1.5">Nama</th><th className="px-2 py-1.5">Fakultas</th><th className="px-2 py-1.5">Jurusan</th><th className="px-2 py-1.5">Prodi</th></tr></thead>
               <tbody>
                 {importRows.map((r, i) => (
-                  <tr key={i} className="border-t border-[#dcefe2] dark:border-[#1d3527]"><td className="px-2 py-1.5">{r.nim}</td><td className="px-2 py-1.5">{r.name}</td></tr>
+                  <tr key={i} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
+                    <td className="px-2 py-1.5">{r.npm}</td><td className="px-2 py-1.5">{r.name}</td>
+                    <td className="px-2 py-1.5">{r.fakultas}</td><td className="px-2 py-1.5">{r.jurusan}</td><td className="px-2 py-1.5">{r.prodi}</td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -211,7 +254,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
             </p>
             {bulkResult.skipped.length > 0 && (
               <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-lg p-2.5 max-h-40 overflow-y-auto">
-                {bulkResult.skipped.map((s, i) => <div key={i}>{s.nim} — {s.name} ({s.reason})</div>)}
+                {bulkResult.skipped.map((s, i) => <div key={i}>{s.npm} — {s.name} ({s.reason})</div>)}
               </div>
             )}
           </div>

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import QRCode from "qrcode";
 import { QrCode as QrCodeIcon, CheckCircle2, Circle } from "lucide-react";
 
-type Praktikan = { id: string; nim: string; name: string };
+type Praktikan = { id: string; npm: string; name: string };
 type QrInfo = { token: string; activatedAt: string; durationMin: number };
 
 export function QRClient({
@@ -104,7 +104,7 @@ export function QRClient({
             const done = hadirIds.has(p.id);
             return (
               <div key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                <span>{p.name} <span className="text-gray-400">· {p.nim}</span></span>
+                <span>{p.name} <span className="text-gray-400">· {p.npm}</span></span>
                 {done ? (
                   <span className="flex items-center gap-1 text-primary dark:text-primary-dark text-xs font-semibold">
                     <CheckCircle2 size={13} /> Hadir

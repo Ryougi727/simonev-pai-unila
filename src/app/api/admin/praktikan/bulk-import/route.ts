@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 
-type ImportRow = { nim: string; name: string };
+type ImportRow = { npm: string; name: string; fakultas: string; jurusan: string; prodi: string };
 
 export async function POST(req: Request) {
   const admin = await requireAdmin();
@@ -16,21 +16,27 @@ export async function POST(req: Request) {
   const kelompok = await prisma.kelompok.findUnique({ where: { id: kelompokId } });
   if (!kelompok) return NextResponse.json({ error: "Kelompok tidak ditemukan." }, { status: 404 });
 
-  const existingNims = new Set(
-    (await prisma.praktikan.findMany({ where: { kelompokId }, select: { nim: true } })).map((p) => p.nim)
+  const existingNpms = new Set(
+    (await prisma.praktikan.findMany({ where: { kelompokId }, select: { npm: true } })).map((p) => p.npm)
   );
 
   let created = 0;
-  const skipped: { nim: string; name: string; reason: string }[] = [];
+  const skipped: { npm: string; name: string; reason: string }[] = [];
 
   for (const row of rows) {
-    const nim = (row.nim || "").trim();
+    const npm = (row.npm || "").trim();
     const name = (row.name || "").trim();
-    if (!nim || !name) { skipped.push({ nim: nim || "-", name: name || "-", reason: "NIM/nama kosong" }); continue; }
-    if (existingNims.has(nim)) { skipped.push({ nim, name, reason: "NIM sudah ada di kelompok ini" }); continue; }
+    const fakultas = (row.fakultas || "").trim();
+    const jurusan = (row.jurusan || "").trim();
+    const prodi = (row.prodi || "").trim();
+    if (!npm || !name || !fakultas || !jurusan || !prodi) {
+      skipped.push({ npm: npm || "-", name: name || "-", reason: "Ada kolom wajib yang kosong" });
+      continue;
+    }
+    if (existingNpms.has(npm)) { skipped.push({ npm, name, reason: "NPM sudah ada di kelompok ini" }); continue; }
 
-    await prisma.praktikan.create({ data: { nim, name, kelompokId } });
-    existingNims.add(nim);
+    await prisma.praktikan.create({ data: { npm, name, fakultas, jurusan, prodi, kelompokId } });
+    existingNpms.add(npm);
     created++;
   }
 

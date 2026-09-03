@@ -20,7 +20,10 @@ export default async function AdminPraktikanPage() {
     <div>
       <h1 className="font-display text-2xl font-semibold mb-4">Manajemen Praktikan</h1>
       <PraktikanClient
-        praktikan={praktikan.map((p) => ({ id: p.id, nim: p.nim, name: p.name, kelompokId: p.kelompokId, kelompokName: p.kelompok.name }))}
+        praktikan={praktikan.map((p) => ({
+          id: p.id, npm: p.npm, name: p.name, fakultas: p.fakultas, jurusan: p.jurusan, prodi: p.prodi,
+          kelompokId: p.kelompokId, kelompokName: p.kelompok.name,
+        }))}
         kelompok={kelompok.map((k) => ({ id: k.id, name: k.name }))}
       />
     </div>

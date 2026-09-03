@@ -48,7 +48,7 @@ export default async function QRAbsensiPage() {
             ? { token: pertemuan.qrToken, activatedAt: pertemuan.qrActivatedAt!.toISOString(), durationMin: pertemuan.qrDurationMin ?? 10 }
             : null
         }
-        praktikan={kelompok.praktikan.map((p) => ({ id: p.id, nim: p.nim, name: p.name }))}
+        praktikan={kelompok.praktikan.map((p) => ({ id: p.id, npm: p.npm, name: p.name }))}
       />
     </div>
   );

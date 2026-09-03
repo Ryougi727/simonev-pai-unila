@@ -30,7 +30,7 @@ export default async function ScanPage({ params }: { params: { token: string } }
       <p className="text-sm text-gray-500 mb-5">Minggu {pertemuan.week} — pilih nama Anda untuk absen hadir.</p>
       <ScanClient
         token={params.token}
-        praktikan={pertemuan.kelompok.praktikan.map((p) => ({ id: p.id, nim: p.nim, name: p.name, done: scannedIds.has(p.id) }))}
+        praktikan={pertemuan.kelompok.praktikan.map((p) => ({ id: p.id, npm: p.npm, name: p.name, done: scannedIds.has(p.id) }))}
       />
     </Center>
   );

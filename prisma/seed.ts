@@ -47,8 +47,11 @@ async function main() {
     for (let i = 0; i < 6; i++) {
       await prisma.praktikan.create({
         data: {
-          nim: `23110${ki}${String(i + 1).padStart(2, "0")}`,
+          npm: `23110${ki}${String(i + 1).padStart(2, "0")}`,
           name: `${namaDepan[(ki * 6 + i) % namaDepan.length]} ${namaBelakang[(ki * 3 + i) % namaBelakang.length]}`,
+          fakultas: kd.faculty,
+          jurusan: "Teknik Informatika",
+          prodi: "S1 Teknik Informatika",
           kelompokId: kelompok.id,
         },
       });
