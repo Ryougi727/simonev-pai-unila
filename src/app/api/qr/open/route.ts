@@ -12,9 +12,9 @@ export async function POST(req: Request) {
   const { pertemuanId } = await req.json();
   const pertemuan = await prisma.pertemuan.findUnique({
     where: { id: pertemuanId },
-    include: { kelompok: true },
+    include: { kelompok: { include: { mentorAssignments: true } } },
   });
-  if (!pertemuan || pertemuan.kelompok.mentorId !== user.id) {
+  if (!pertemuan || (pertemuan.kelompok.mentorId !== user.id && !pertemuan.kelompok.mentorAssignments.some((a) => a.mentorId === user.id))) {
     return NextResponse.json({ error: "Pertemuan tidak ditemukan." }, { status: 404 });
   }
   if (pertemuan.status === "SELESAI") {

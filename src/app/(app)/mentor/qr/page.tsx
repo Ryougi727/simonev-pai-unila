@@ -13,7 +13,7 @@ export default async function QRAbsensiPage() {
   const week = kalender?.currentWeek ?? 1;
 
   const kelompokList = await prisma.kelompok.findMany({
-    where: { mentorId: user.id },
+    where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
     include: { praktikan: true, pertemuan: { where: { week } } },
   });
 

@@ -30,7 +30,7 @@ async function AdminDashboard({ name }: { name: string }) {
     prisma.user.count({ where: { role: "PJ", active: true } }),
     prisma.kelompok.count(),
     prisma.praktikan.count(),
-    prisma.kelompok.findMany({ where: { mentorId: { not: null } }, include: { pertemuan: { where: { week } } } }),
+    prisma.kelompok.findMany({ where: { OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] }, include: { pertemuan: { where: { week } } } }),
     prisma.activityLog.findMany({ include: { user: true }, orderBy: { at: "desc" }, take: 5 }),
   ]);
 
@@ -110,12 +110,12 @@ async function PJDashboard({ faculty, name }: { faculty?: string; name: string }
   const week = kalender?.currentWeek ?? 1;
 
   const kelompok = await prisma.kelompok.findMany({
-    where: { faculty, mentorId: { not: null } },
-    include: { mentor: true, pertemuan: { where: { week } } },
+    where: { faculty, OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
+    include: { mentor: true, mentorAssignments: { include: { mentor: true } }, pertemuan: { where: { week } } },
   });
 
   const rows = kelompok.map((k) => ({
-    id: k.id, name: k.name, mentor: k.mentor?.name ?? "-",
+    id: k.id, name: k.name, mentor: k.mentorAssignments.length ? k.mentorAssignments.map((a) => a.mentor.name).join(", ") : k.mentor?.name ?? "-",
     status: statusForPertemuan(k.pertemuan[0] ?? null),
   }));
   const selesai = rows.filter((r) => r.status === "selesai").length;
@@ -160,7 +160,7 @@ async function MentorDashboard({ userId, name }: { userId: string; name: string 
   const week = kalender?.currentWeek ?? 1;
 
   const [kelompokList, materiMinggu] = await Promise.all([
-    prisma.kelompok.findMany({ where: { mentorId: userId }, include: { pertemuan: { orderBy: { week: "desc" } } } }),
+    prisma.kelompok.findMany({ where: { OR: [{ mentorId: userId }, { mentorAssignments: { some: { mentorId: userId } } }] }, include: { pertemuan: { orderBy: { week: "desc" } } } }),
     prisma.materi.findUnique({ where: { week } }),
   ]);
 

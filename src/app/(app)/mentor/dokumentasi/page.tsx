@@ -13,7 +13,7 @@ export default async function MentorDokumentasiPage() {
 
   const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
   const kelompokList = await prisma.kelompok.findMany({
-    where: { mentorId: user.id },
+    where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
     include: { pertemuan: { orderBy: { week: "desc" }, include: { dokumentasi: true } } },
     orderBy: { name: "asc" },
   });

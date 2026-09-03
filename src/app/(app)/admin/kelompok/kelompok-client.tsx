@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 
-type KelompokRow = { id: string; name: string; faculty: string; mentorId: string | null; mentorName: string | null; praktikanCount: number };
+type KelompokRow = { id: string; name: string; faculty: string; mentorIds: string[]; mentorNames: string[]; praktikanCount: number };
 type Mentor = { id: string; name: string };
 
 const FACULTIES = ["FMIPA", "Teknik", "Ekonomi & Bisnis", "Hukum", "Pertanian", "ISIP", "KIP", "Kedokteran"];
@@ -14,15 +14,15 @@ export function KelompokClient({ kelompok, mentors }: { kelompok: KelompokRow[];
   const refresh = () => router.refresh();
 
   const [modal, setModal] = useState<{ mode: "add" | "edit"; k?: KelompokRow } | null>(null);
-  const [form, setForm] = useState({ name: "", faculty: FACULTIES[0], mentorId: "" });
+  const [form, setForm] = useState({ name: "", faculty: FACULTIES[0], mentorIds: [] as string[] });
   const [saving, setSaving] = useState(false);
 
-  const assignedMentorIds = new Set(kelompok.filter((k) => k.mentorId).map((k) => k.mentorId));
-  const availableMentors = (currentMentorId?: string | null) =>
-    mentors.filter((m) => !assignedMentorIds.has(m.id) || m.id === currentMentorId);
+  const assignedMentorIds = new Set(kelompok.flatMap((k) => k.mentorIds));
+  const availableMentors = (currentMentorIds: string[]) =>
+    mentors.filter((m) => !assignedMentorIds.has(m.id) || currentMentorIds.includes(m.id));
 
-  const openAdd = () => { setForm({ name: "", faculty: FACULTIES[0], mentorId: "" }); setModal({ mode: "add" }); };
-  const openEdit = (k: KelompokRow) => { setForm({ name: k.name, faculty: k.faculty, mentorId: k.mentorId || "" }); setModal({ mode: "edit", k }); };
+  const openAdd = () => { setForm({ name: "", faculty: FACULTIES[0], mentorIds: [] }); setModal({ mode: "add" }); };
+  const openEdit = (k: KelompokRow) => { setForm({ name: k.name, faculty: k.faculty, mentorIds: k.mentorIds }); setModal({ mode: "edit", k }); };
 
   const submit = async () => {
     if (!form.name.trim()) { alert("Nama kelompok wajib diisi."); return; }
@@ -31,7 +31,7 @@ export function KelompokClient({ kelompok, mentors }: { kelompok: KelompokRow[];
     const method = modal?.mode === "edit" ? "PATCH" : "POST";
     const res = await fetch(url, {
       method, headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, faculty: form.faculty, mentorId: form.mentorId || null }),
+      body: JSON.stringify({ name: form.name, faculty: form.faculty, mentorId: form.mentorIds }),
     });
     setSaving(false);
     if (!res.ok) { const d = await res.json(); alert(d.error || "Gagal menyimpan."); return; }
@@ -73,7 +73,7 @@ export function KelompokClient({ kelompok, mentors }: { kelompok: KelompokRow[];
               <tr key={k.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
                 <td className="px-4 py-2.5 font-semibold">{k.name}</td>
                 <td className="px-4 py-2.5">{k.faculty}</td>
-                <td className="px-4 py-2.5">{k.mentorName || <span className="text-gray-400">Belum ditentukan</span>}</td>
+                <td className="px-4 py-2.5">{k.mentorNames.length ? k.mentorNames.join(", ") : <span className="text-gray-400">Belum ditentukan</span>}</td>
                 <td className="px-4 py-2.5">{k.praktikanCount} orang</td>
                 <td className="px-4 py-2.5">
                   <div className="flex gap-1.5 justify-end">
@@ -101,14 +101,18 @@ export function KelompokClient({ kelompok, mentors }: { kelompok: KelompokRow[];
             {FACULTIES.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
         </label>
-        <label className="block">
+        <div>
           <div className="text-xs font-bold text-gray-500 mb-1.5">Mentor Pembimbing</div>
-          <select value={form.mentorId} onChange={(e) => setForm((f) => ({ ...f, mentorId: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary">
-            <option value="">Belum ditentukan</option>
-            {availableMentors(modal?.k?.mentorId).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-          <div className="text-[11px] text-gray-400 mt-1">Hanya mentor tanpa kelompok yang muncul di sini.</div>
-        </label>
+          <div className="space-y-2">
+            {availableMentors(form.mentorIds).map((m) => (
+              <label key={m.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={form.mentorIds.includes(m.id)} disabled={!form.mentorIds.includes(m.id) && form.mentorIds.length >= 2} onChange={(e) => setForm((f) => ({ ...f, mentorIds: e.target.checked ? [...f.mentorIds, m.id] : f.mentorIds.filter((id) => id !== m.id) }))} />
+                {m.name}
+              </label>
+            ))}
+          </div>
+          <div className="text-[11px] text-gray-400 mt-1">Pilih satu atau dua mentor.</div>
+        </div>
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={() => setModal(null)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submit} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">

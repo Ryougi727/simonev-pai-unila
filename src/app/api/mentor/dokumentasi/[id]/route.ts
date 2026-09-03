@@ -11,9 +11,9 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   const foto = await prisma.dokumentasi.findUnique({
     where: { id: params.id },
-    include: { pertemuan: { include: { kelompok: true } } },
+    include: { pertemuan: { include: { kelompok: { include: { mentorAssignments: true } } } } },
   });
-  if (!foto || foto.pertemuan.kelompok.mentorId !== user.id) {
+  if (!foto || (foto.pertemuan.kelompok.mentorId !== user.id && !foto.pertemuan.kelompok.mentorAssignments.some((a) => a.mentorId === user.id))) {
     return NextResponse.json({ error: "Tidak ditemukan." }, { status: 404 });
   }
 

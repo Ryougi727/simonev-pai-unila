@@ -42,7 +42,10 @@ async function main() {
   for (let ki = 0; ki < kelompokDefs.length; ki++) {
     const kd = kelompokDefs[ki];
     const kelompok = await prisma.kelompok.create({
-      data: { name: kd.name, faculty: kd.faculty, mentorId: kd.mentor?.id },
+      data: {
+        name: kd.name, faculty: kd.faculty, mentorId: kd.mentor?.id,
+        mentorAssignments: kd.mentor ? { create: [{ mentorId: kd.mentor.id }] } : undefined,
+      },
     });
     for (let i = 0; i < 6; i++) {
       await prisma.praktikan.create({

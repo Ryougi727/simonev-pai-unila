@@ -20,7 +20,7 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
   const totalMinggu = kalender?.totalMinggu ?? 8;
 
   const kelompokList = await prisma.kelompok.findMany({
-    include: { mentor: true, pertemuan: { where: { status: "SELESAI" } } },
+    include: { mentor: true, mentorAssignments: { include: { mentor: true } }, pertemuan: { where: { status: "SELESAI" } } },
     orderBy: { name: "asc" },
   });
 
@@ -30,10 +30,13 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
   } else if (mode === "mentor") {
     const map = new Map<string, { label: string; faculty: string; done: number; total: number; groups: number }>();
     for (const k of kelompokList) {
-      const key = k.mentor?.id || "none";
-      const cur = map.get(key) || { label: k.mentor?.name || "Belum ditentukan", faculty: k.faculty, done: 0, total: 0, groups: 0 };
-      cur.done += k.pertemuan.length; cur.total += totalMinggu; cur.groups += 1;
-      map.set(key, cur);
+      const assignments = k.mentorAssignments.length ? k.mentorAssignments : k.mentor ? [{ mentor: k.mentor }] : [];
+      for (const assignment of assignments) {
+        const key = assignment.mentor.id;
+        const cur = map.get(key) || { label: assignment.mentor.name, faculty: k.faculty, done: 0, total: 0, groups: 0 };
+        cur.done += k.pertemuan.length; cur.total += totalMinggu; cur.groups += 1;
+        map.set(key, cur);
+      }
     }
     rows = Array.from(map.values());
   } else {

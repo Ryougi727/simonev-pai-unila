@@ -13,8 +13,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Semua field wajib diisi." }, { status: 400 });
   }
 
-  const kelompok = await prisma.kelompok.findUnique({ where: { id: kelompokId } });
-  if (!kelompok || kelompok.mentorId !== user.id) {
+  const kelompok = await prisma.kelompok.findUnique({ where: { id: kelompokId }, include: { mentorAssignments: true } });
+  if (!kelompok || (kelompok.mentorId !== user.id && !kelompok.mentorAssignments.some((a) => a.mentorId === user.id))) {
     return NextResponse.json({ error: "Kelompok tidak ditemukan." }, { status: 404 });
   }
 

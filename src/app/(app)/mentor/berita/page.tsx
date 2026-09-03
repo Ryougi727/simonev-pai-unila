@@ -16,7 +16,7 @@ export default async function MentorBeritaPage() {
 
   const [kelompokList, materiMinggu] = await Promise.all([
     prisma.kelompok.findMany({
-      where: { mentorId: user.id },
+      where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
       include: {
         pertemuan: { where: { week }, include: { absensi: true, beritaAcara: true } },
         _count: { select: { praktikan: true } },
