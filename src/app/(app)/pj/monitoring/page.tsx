@@ -18,8 +18,8 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
   const week = Math.min(totalMinggu, Math.max(1, Number(searchParams.week) || kalender?.currentWeek || 1));
 
   const kelompok = await prisma.kelompok.findMany({
-    where: { faculty: user.faculty, mentorId: { not: null } },
-    include: { mentor: true, pertemuan: { where: { week } } },
+    where: { faculty: user.faculty, OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
+    include: { mentor: true, mentorAssignments: { include: { mentor: true } }, pertemuan: { where: { week } } },
     orderBy: { name: "asc" },
   });
 
@@ -46,7 +46,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
               return (
                 <tr key={k.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
                   <td className="px-4 py-2.5 font-semibold">{k.name}</td>
-                  <td className="px-4 py-2.5">{k.mentor?.name || "-"}</td>
+                  <td className="px-4 py-2.5">{k.mentorAssignments.length ? k.mentorAssignments.map((a) => a.mentor.name).join(", ") : k.mentor?.name || "-"}</td>
                   <td className="px-4 py-2.5">{rec ? `${rec.date.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}, ${rec.time}` : "-"}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={status} /></td>
                 </tr>

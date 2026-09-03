@@ -38,6 +38,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       where: { mentorId: params.id },
       data: { mentorId: null },
     });
+    await prisma.kelompokMentor.deleteMany({ where: { mentorId: params.id } });
   }
 
   // Delete the user

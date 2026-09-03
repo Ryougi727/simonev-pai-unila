@@ -15,7 +15,7 @@ export default async function MentorJadwalPage() {
   const totalMinggu = kalender?.totalMinggu ?? 8;
 
   const kelompokList = await prisma.kelompok.findMany({
-    where: { mentorId: user.id },
+    where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
     include: { pertemuan: true },
     orderBy: { name: "asc" },
   });

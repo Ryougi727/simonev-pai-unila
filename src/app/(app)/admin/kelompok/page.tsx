@@ -13,7 +13,7 @@ export default async function AdminKelompokPage() {
 
   const [kelompok, mentors] = await Promise.all([
     prisma.kelompok.findMany({
-      include: { mentor: true, _count: { select: { praktikan: true } } },
+      include: { mentor: true, mentorAssignments: { include: { mentor: true } }, _count: { select: { praktikan: true } } },
       orderBy: { name: "asc" },
     }),
     prisma.user.findMany({ where: { role: "MENTOR", active: true }, orderBy: { name: "asc" } }),
@@ -24,8 +24,10 @@ export default async function AdminKelompokPage() {
       <h1 className="font-display text-2xl font-semibold mb-4">Manajemen Kelompok</h1>
       <KelompokClient
         kelompok={kelompok.map((k) => ({
-          id: k.id, name: k.name, faculty: k.faculty, mentorId: k.mentorId,
-          mentorName: k.mentor?.name ?? null, praktikanCount: k._count.praktikan,
+          id: k.id, name: k.name, faculty: k.faculty,
+          mentorIds: k.mentorAssignments.length ? k.mentorAssignments.map((a) => a.mentorId) : (k.mentorId ? [k.mentorId] : []),
+          mentorNames: k.mentorAssignments.length ? k.mentorAssignments.map((a) => a.mentor.name) : (k.mentor?.name ? [k.mentor.name] : []),
+          praktikanCount: k._count.praktikan,
         }))}
         mentors={mentors.map((m) => ({ id: m.id, name: m.name }))}
       />

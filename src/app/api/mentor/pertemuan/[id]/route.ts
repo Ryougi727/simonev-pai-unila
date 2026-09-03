@@ -8,8 +8,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const user = session?.user as any;
   if (!user || user.role !== "MENTOR") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const pertemuan = await prisma.pertemuan.findUnique({ where: { id: params.id }, include: { kelompok: true } });
-  if (!pertemuan || pertemuan.kelompok.mentorId !== user.id) {
+  const pertemuan = await prisma.pertemuan.findUnique({ where: { id: params.id }, include: { kelompok: { include: { mentorAssignments: true } } } });
+  if (!pertemuan || (pertemuan.kelompok.mentorId !== user.id && !pertemuan.kelompok.mentorAssignments.some((a) => a.mentorId === user.id))) {
     return NextResponse.json({ error: "Tidak ditemukan." }, { status: 404 });
   }
   if (pertemuan.status === "SELESAI") {

@@ -36,6 +36,7 @@ model User {
   updatedAt          DateTime @updatedAt
 
   kelompokMentored Kelompok[]    @relation("MentorKelompok")
+  kelompokAssignments KelompokMentor[]
   activityLogs     ActivityLog[]
   auditLogs        AuditLog[]
   pengumuman       Pengumuman[]
@@ -47,9 +48,20 @@ model Kelompok {
   faculty   String
   mentorId  String?
   mentor    User?       @relation("MentorKelompok", fields: [mentorId], references: [id])
+  mentorAssignments KelompokMentor[]
   praktikan Praktikan[]
   pertemuan Pertemuan[]
   createdAt DateTime    @default(now())
+}
+
+model KelompokMentor {
+  kelompokId String
+  mentorId   String
+  kelompok   Kelompok @relation(fields: [kelompokId], references: [id], onDelete: Cascade)
+  mentor     User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@id([kelompokId, mentorId])
+  @@index([mentorId])
 }
 
 model Praktikan {
