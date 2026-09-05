@@ -66,16 +66,14 @@ model KelompokMentor {
 
 model Praktikan {
   id         String    @id @default(cuid())
-  npm        String
+  npm        String    @unique
   name       String
   fakultas   String
   jurusan    String
   prodi      String
-  kelompokId String
-  kelompok   Kelompok  @relation(fields: [kelompokId], references: [id], onDelete: Cascade)
+  kelompokId String?
+  kelompok   Kelompok? @relation(fields: [kelompokId], references: [id], onDelete: SetNull)
   absensi    Absensi[]
-
-  @@unique([kelompokId, npm])
 }
 
 model KalenderPraktikum {

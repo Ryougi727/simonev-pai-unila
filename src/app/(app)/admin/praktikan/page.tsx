@@ -22,7 +22,7 @@ export default async function AdminPraktikanPage() {
       <PraktikanClient
         praktikan={praktikan.map((p) => ({
           id: p.id, npm: p.npm, name: p.name, fakultas: p.fakultas, jurusan: p.jurusan, prodi: p.prodi,
-          kelompokId: p.kelompokId, kelompokName: p.kelompok.name,
+          kelompokId: p.kelompokId, kelompokName: p.kelompok?.name ?? null,
         }))}
         kelompok={kelompok.map((k) => ({ id: k.id, name: k.name }))}
       />

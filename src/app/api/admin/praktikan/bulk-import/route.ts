@@ -8,17 +8,13 @@ export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { kelompokId, rows } = (await req.json()) as { kelompokId: string; rows: ImportRow[] };
-  if (!kelompokId || !Array.isArray(rows) || !rows.length) {
+  const { rows } = (await req.json()) as { rows: ImportRow[] };
+  if (!Array.isArray(rows) || !rows.length) {
     return NextResponse.json({ error: "Data tidak valid." }, { status: 400 });
   }
 
-  const kelompok = await prisma.kelompok.findUnique({ where: { id: kelompokId } });
-  if (!kelompok) return NextResponse.json({ error: "Kelompok tidak ditemukan." }, { status: 404 });
-
-  const existingNpms = new Set(
-    (await prisma.praktikan.findMany({ where: { kelompokId }, select: { npm: true } })).map((p) => p.npm)
-  );
+  // NPM is globally unique now (not scoped to a kelompok — praktikan can be imported unassigned)
+  const existingNpms = new Set((await prisma.praktikan.findMany({ select: { npm: true } })).map((p) => p.npm));
 
   let created = 0;
   const skipped: { npm: string; name: string; reason: string }[] = [];
@@ -33,9 +29,9 @@ export async function POST(req: Request) {
       skipped.push({ npm: npm || "-", name: name || "-", reason: "Ada kolom wajib yang kosong" });
       continue;
     }
-    if (existingNpms.has(npm)) { skipped.push({ npm, name, reason: "NPM sudah ada di kelompok ini" }); continue; }
+    if (existingNpms.has(npm)) { skipped.push({ npm, name, reason: "NPM sudah terdaftar" }); continue; }
 
-    await prisma.praktikan.create({ data: { npm, name, fakultas, jurusan, prodi, kelompokId } });
+    await prisma.praktikan.create({ data: { npm, name, fakultas, jurusan, prodi, kelompokId: null } });
     existingNpms.add(npm);
     created++;
   }
@@ -44,7 +40,7 @@ export async function POST(req: Request) {
     await prisma.auditLog.create({
       data: {
         entity: "Praktikan", action: "Impor",
-        detail: `Mengimpor ${created} praktikan ke kelompok "${kelompok.name}" dari Excel.`,
+        detail: `Mengimpor ${created} praktikan dari Excel (belum dikelompokkan — assign lewat Manajemen Kelompok).`,
         userId: admin.id,
       },
     });

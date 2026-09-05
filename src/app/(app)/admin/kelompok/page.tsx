@@ -11,12 +11,13 @@ export default async function AdminKelompokPage() {
   const user = session?.user as any;
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
-  const [kelompok, mentors] = await Promise.all([
+  const [kelompok, mentors, praktikan] = await Promise.all([
     prisma.kelompok.findMany({
       include: { mentor: true, mentorAssignments: { include: { mentor: true } }, _count: { select: { praktikan: true } } },
       orderBy: { name: "asc" },
     }),
     prisma.user.findMany({ where: { role: "MENTOR", active: true }, orderBy: { name: "asc" } }),
+    prisma.praktikan.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -30,6 +31,7 @@ export default async function AdminKelompokPage() {
           praktikanCount: k._count.praktikan,
         }))}
         mentors={mentors.map((m) => ({ id: m.id, name: m.name }))}
+        praktikan={praktikan.map((p) => ({ id: p.id, npm: p.npm, name: p.name, kelompokId: p.kelompokId }))}
       />
     </div>
   );

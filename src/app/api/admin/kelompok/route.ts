@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, faculty, mentorId } = await req.json();
+  const { name, faculty, mentorId, praktikanIds } = await req.json();
   if (!name?.trim() || !faculty) return NextResponse.json({ error: "Nama dan fakultas wajib diisi." }, { status: 400 });
 
   const mentorIds = [...new Set(Array.isArray(mentorId) ? mentorId.filter(Boolean) : mentorId ? [mentorId] : [])];
@@ -29,8 +29,17 @@ export async function POST(req: Request) {
     },
   });
 
+  const ids: string[] = Array.isArray(praktikanIds) ? praktikanIds.filter(Boolean) : [];
+  if (ids.length) {
+    await prisma.praktikan.updateMany({ where: { id: { in: ids } }, data: { kelompokId: kelompok.id } });
+  }
+
   await prisma.auditLog.create({
-    data: { entity: "Kelompok", action: "Tambah", detail: `Menambahkan kelompok "${name}".`, userId: admin.id },
+    data: {
+      entity: "Kelompok", action: "Tambah",
+      detail: `Menambahkan kelompok "${name}"${ids.length ? ` dengan ${ids.length} praktikan` : ""}.`,
+      userId: admin.id,
+    },
   });
 
   return NextResponse.json({ id: kelompok.id });
