@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import QRCode from "qrcode";
-import { QrCode as QrCodeIcon, CheckCircle2, Circle } from "lucide-react";
+import { QrCode as QrCodeIcon, CheckCircle2, Circle, RotateCcw } from "lucide-react";
 
 type Praktikan = { id: string; npm: string; name: string };
 type QrInfo = { token: string; activatedAt: string; durationMin: number };
@@ -20,6 +20,8 @@ export function QRClient({
   const [now, setNow] = useState(Date.now());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [info, setInfo] = useState("");
 
   const scanUrl = qr ? `${typeof window !== "undefined" ? window.location.origin : ""}/scan/${qr.token}` : "";
 
@@ -52,7 +54,7 @@ export function QRClient({
   const ss = Math.max(0, Math.floor((remainingMs % 60000) / 1000));
 
   const openQr = async () => {
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setInfo("");
     const res = await fetch("/api/qr/open", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pertemuanId }),
     });
@@ -60,6 +62,21 @@ export function QRClient({
     setLoading(false);
     if (!res.ok) { setError(data.error || "Gagal membuka QR."); return; }
     setQr({ token: data.qrToken, activatedAt: data.activatedAt, durationMin: data.durationMin });
+  };
+
+  const resetPertemuan = async () => {
+    const ok = confirm(
+      "Reset pertemuan ini? QR yang sedang aktif akan ditutup dan SEMUA data hadir yang sudah tercatat untuk minggu ini akan dihapus. Tanggal, jam, dan lokasi jadwal TIDAK berubah — cuma untuk membersihkan percobaan/kesalahan sebelum praktikum sungguhan dimulai."
+    );
+    if (!ok) return;
+    setResetting(true); setError(""); setInfo("");
+    const res = await fetch(`/api/mentor/pertemuan/${pertemuanId}/reset`, { method: "POST" });
+    const data = await res.json();
+    setResetting(false);
+    if (!res.ok) { setError(data.error || "Gagal mereset."); return; }
+    setQr(null);
+    setHadirIds(new Set());
+    setInfo(`Berhasil direset — ${data.clearedAbsensi} data hadir dihapus. QR belum dibuka lagi.`);
   };
 
   return (
@@ -92,6 +109,16 @@ export function QRClient({
           </>
         )}
         {error && <div className="text-red-600 text-xs font-semibold mt-2">{error}</div>}
+        {info && <div className="text-primary dark:text-primary-dark text-xs font-semibold mt-2">{info}</div>}
+        {status !== "SELESAI" && (
+          <button
+            onClick={resetPertemuan}
+            disabled={resetting}
+            className="mt-4 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg py-2 disabled:opacity-60"
+          >
+            <RotateCcw size={13} /> {resetting ? "Mereset…" : "Reset Pertemuan Ini"}
+          </button>
+        )}
       </div>
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl">
