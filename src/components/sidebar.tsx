@@ -8,7 +8,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Users, Calendar, QrCode, FileText, Image as ImageIcon,
   BarChart3, Settings, LogOut, GraduationCap, UserCog, ClipboardList, Archive,
-  Clock, Megaphone, ShieldCheck, Eye, Menu, X,
+  Clock, Megaphone, ShieldCheck, Eye, Menu, X, Newspaper,
 } from "lucide-react";
 
 type MenuItem = { href: string; label: string; icon: any; group?: string };
@@ -17,6 +17,7 @@ const MENUS: Record<string, MenuItem[]> = {
   ADMIN: [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/pengumuman", label: "Pengumuman", icon: Megaphone },
+    { href: "/admin/berita", label: "Kelola Berita", icon: Newspaper },
     { href: "/admin/users", label: "Manajemen Pengguna", icon: UserCog, group: "Manajemen" },
     { href: "/admin/kelompok", label: "Manajemen Kelompok", icon: Users, group: "Manajemen" },
     { href: "/admin/praktikan", label: "Manajemen Praktikan", icon: GraduationCap, group: "Manajemen" },

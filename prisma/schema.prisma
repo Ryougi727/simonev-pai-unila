@@ -40,6 +40,7 @@ model User {
   activityLogs     ActivityLog[]
   auditLogs        AuditLog[]
   pengumuman       Pengumuman[]
+  berita           Berita[]
 }
 
 model Kelompok {
@@ -189,4 +190,27 @@ model Pengumuman {
   authorId       String
   author         User     @relation(fields: [authorId], references: [id])
   createdAt      DateTime @default(now())
+}
+
+model Berita {
+  id        String       @id @default(cuid())
+  title     String
+  excerpt   String?
+  content   String
+  category  String       @default("Berita") // Berita | Kajian | Acara | Pengumuman
+  eventDate DateTime?
+  published Boolean      @default(true)
+  authorId  String
+  author    User         @relation(fields: [authorId], references: [id])
+  photos    BeritaFoto[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model BeritaFoto {
+  id        String   @id @default(cuid())
+  beritaId  String
+  berita    Berita   @relation(fields: [beritaId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime @default(now())
 }
