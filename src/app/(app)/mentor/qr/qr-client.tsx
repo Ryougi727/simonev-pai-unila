@@ -65,10 +65,10 @@ export function QRClient({
   };
 
   const resetPertemuan = async () => {
-    const ok = confirm(
-      "Reset pertemuan ini? QR yang sedang aktif akan ditutup dan SEMUA data hadir yang sudah tercatat untuk minggu ini akan dihapus. Tanggal, jam, dan lokasi jadwal TIDAK berubah — cuma untuk membersihkan percobaan/kesalahan sebelum praktikum sungguhan dimulai."
-    );
-    if (!ok) return;
+    const msg = status === "SELESAI"
+      ? "Pertemuan ini sudah SELESAI (berita acara sudah terisi). Reset akan MENGHAPUS berita acara, semua data hadir, dan foto dokumentasi untuk minggu ini, lalu status kembali ke Terjadwal. Tanggal/jam/lokasi jadwal tidak berubah. Lanjutkan?"
+      : "Reset pertemuan ini? QR yang sedang aktif akan ditutup dan SEMUA data hadir yang sudah tercatat untuk minggu ini akan dihapus. Tanggal, jam, dan lokasi jadwal TIDAK berubah.";
+    if (!confirm(msg)) return;
     setResetting(true); setError(""); setInfo("");
     const res = await fetch(`/api/mentor/pertemuan/${pertemuanId}/reset`, { method: "POST" });
     const data = await res.json();
@@ -76,7 +76,8 @@ export function QRClient({
     if (!res.ok) { setError(data.error || "Gagal mereset."); return; }
     setQr(null);
     setHadirIds(new Set());
-    setInfo(`Berhasil direset — ${data.clearedAbsensi} data hadir dihapus. QR belum dibuka lagi.`);
+    setStatus("TERJADWAL");
+    setInfo(`Berhasil direset — ${data.clearedAbsensi} data hadir${data.clearedBeritaAcara ? " & berita acara" : ""} dihapus.`);
   };
 
   return (
@@ -110,15 +111,13 @@ export function QRClient({
         )}
         {error && <div className="text-red-600 text-xs font-semibold mt-2">{error}</div>}
         {info && <div className="text-primary dark:text-primary-dark text-xs font-semibold mt-2">{info}</div>}
-        {status !== "SELESAI" && (
-          <button
-            onClick={resetPertemuan}
-            disabled={resetting}
-            className="mt-4 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg py-2 disabled:opacity-60"
-          >
-            <RotateCcw size={13} /> {resetting ? "Mereset…" : "Reset Pertemuan Ini"}
-          </button>
-        )}
+        <button
+          onClick={resetPertemuan}
+          disabled={resetting}
+          className="mt-4 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg py-2 disabled:opacity-60"
+        >
+          <RotateCcw size={13} /> {resetting ? "Mereset…" : "Reset Pertemuan Ini"}
+        </button>
       </div>
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl">

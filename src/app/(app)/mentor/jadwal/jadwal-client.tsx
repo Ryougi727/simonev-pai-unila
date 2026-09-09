@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, X } from "lucide-react";
+import { Plus, Pencil, X, RotateCcw } from "lucide-react";
 import { statusForPertemuan } from "@/lib/status";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -18,6 +18,7 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
   const [modal, setModal] = useState<{ week: number; existing?: Pertemuan } | null>(null);
   const [form, setForm] = useState({ date: "", time: "15:30", location: "" });
   const [saving, setSaving] = useState(false);
+  const [resettingId, setResettingId] = useState<string | null>(null);
 
   const openModal = (week: number, existing?: Pertemuan) => {
     setForm(existing ? { date: existing.date, time: existing.time, location: existing.location } : { date: "", time: "15:30", location: "" });
@@ -35,6 +36,19 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
     setSaving(false);
     if (!res.ok) { alert(data.error || "Gagal menyimpan."); return; }
     setModal(null);
+    router.refresh();
+  };
+
+  const resetPertemuan = async (rec: Pertemuan) => {
+    const msg = rec.status === "SELESAI"
+      ? `Pertemuan minggu ${rec.week} sudah SELESAI (berita acara sudah terisi). Reset akan MENGHAPUS berita acara, semua data hadir, dan foto dokumentasi minggu ini, lalu status kembali ke Terjadwal. Tanggal/jam/lokasi TIDAK berubah. Lanjutkan?`
+      : `Reset pertemuan minggu ${rec.week}? QR yang aktif akan ditutup dan data hadir yang sudah tercatat akan dihapus. Jadwal tidak berubah.`;
+    if (!confirm(msg)) return;
+    setResettingId(rec.id);
+    const res = await fetch(`/api/mentor/pertemuan/${rec.id}/reset`, { method: "POST" });
+    const data = await res.json();
+    setResettingId(null);
+    if (!res.ok) { alert(data.error || "Gagal mereset."); return; }
     router.refresh();
   };
 
@@ -70,12 +84,31 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
                   <td className="px-4 py-2.5">{rec?.location || "-"}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={status} /></td>
                   <td className="px-4 py-2.5">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-3">
                       {locked ? (
-                        <span className="text-[11px] text-gray-400">Terkunci</span>
+                        <button
+                          onClick={() => resetPertemuan(rec!)}
+                          disabled={resettingId === rec!.id}
+                          className="text-[11px] font-semibold flex items-center gap-1 text-red-500 dark:text-red-400 disabled:opacity-60"
+                        >
+                          <RotateCcw size={11} /> {resettingId === rec!.id ? "Mereset…" : "Reset"}
+                        </button>
+                      ) : rec ? (
+                        <>
+                          <button onClick={() => openModal(w, rec)} className="text-xs font-semibold flex items-center gap-1 text-primary dark:text-primary-dark">
+                            <Pencil size={12} /> Ubah
+                          </button>
+                          <button
+                            onClick={() => resetPertemuan(rec)}
+                            disabled={resettingId === rec.id}
+                            className="text-[11px] font-semibold flex items-center gap-1 text-red-500 dark:text-red-400 disabled:opacity-60"
+                          >
+                            <RotateCcw size={11} /> {resettingId === rec.id ? "…" : "Reset"}
+                          </button>
+                        </>
                       ) : (
-                        <button onClick={() => openModal(w, rec)} className="text-xs font-semibold flex items-center gap-1 text-primary dark:text-primary-dark">
-                          {rec ? <Pencil size={12} /> : <Plus size={12} />} {rec ? "Ubah" : "Buat Jadwal"}
+                        <button onClick={() => openModal(w)} className="text-xs font-semibold flex items-center gap-1 text-primary dark:text-primary-dark">
+                          <Plus size={12} /> Buat Jadwal
                         </button>
                       )}
                     </div>
