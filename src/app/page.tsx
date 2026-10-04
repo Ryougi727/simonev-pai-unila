@@ -8,7 +8,7 @@ import { IslamicPatternBackground } from "@/components/islamic-pattern";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [upcoming, allBerita] = await Promise.all([
+  const [upcoming, allBerita, galeriFotos, settings] = await Promise.all([
     prisma.berita.findMany({
       where: { published: true, category: { in: ["Kajian", "Acara"] }, eventDate: { gte: new Date(new Date().toDateString()) } },
       include: { photos: true },
@@ -21,7 +21,10 @@ export default async function LandingPage() {
       orderBy: { createdAt: "desc" },
       take: 24,
     }),
+    prisma.galeri.findMany({ orderBy: [{ order: "asc" }, { createdAt: "asc" }], take: 10 }),
+    prisma.settings.findUnique({ where: { id: "singleton" } }),
   ]);
+  const galeriSubtitle = settings?.galeriSubtitle ?? "Momen Praktikum PAI";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -71,6 +74,26 @@ export default async function LandingPage() {
                 </div>
               </Link>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Galeri */}
+      {galeriFotos.length > 0 && (
+        <section id="galeri" className="py-10 w-full">
+          <div className="max-w-6xl mx-auto px-5 mb-5">
+            <h2 className="font-display text-xl font-bold text-on-surface">Galeri</h2>
+            <p className="text-sm text-on-surface-variant mt-0.5">{galeriSubtitle}</p>
+          </div>
+          <div className="overflow-hidden">
+            <div className="flex gap-4 w-max animate-marquee">
+              {[...galeriFotos, ...galeriFotos].map((f, i) => (
+                <div key={`${f.id}-${i}`} className="w-64 sm:w-80 h-44 sm:h-52 rounded-2xl overflow-hidden shrink-0 border border-outline-variant/30">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={f.url} alt="" className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}

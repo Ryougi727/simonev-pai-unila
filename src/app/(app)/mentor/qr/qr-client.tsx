@@ -2,19 +2,22 @@
 
 import { useEffect, useState, useCallback } from "react";
 import QRCode from "qrcode";
-import { QrCode as QrCodeIcon, CheckCircle2, Circle, RotateCcw } from "lucide-react";
+import { QrCode as QrCodeIcon, CheckCircle2, Circle, RotateCcw, AlertTriangle } from "lucide-react";
 
 type Praktikan = { id: string; npm: string; name: string };
 type QrInfo = { token: string; activatedAt: string; durationMin: number };
+type Item = {
+  pertemuanId: string; kelompokId: string; kelompokName: string; week: number; status: string;
+  isCurrentWeek: boolean; isEmergency: boolean; qr: QrInfo | null; praktikan: Praktikan[];
+};
 
-export function QRClient({
-  pertemuanId, kelompokName, week, initialStatus, initialQr, praktikan,
-}: {
-  pertemuanId: string; kelompokName: string; week: number;
-  initialStatus: string; initialQr: QrInfo | null; praktikan: Praktikan[];
-}) {
-  const [qr, setQr] = useState<QrInfo | null>(initialQr);
-  const [status, setStatus] = useState(initialStatus);
+export function QRClient({ items }: { items: Item[] }) {
+  const [selectedId, setSelectedId] = useState(items[0].pertemuanId);
+  const [liveItems, setLiveItems] = useState(items);
+  const active = liveItems.find((i) => i.pertemuanId === selectedId) || liveItems[0];
+
+  const [qr, setQr] = useState<QrInfo | null>(active.qr);
+  const [status, setStatus] = useState(active.status);
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [hadirIds, setHadirIds] = useState<Set<string>>(new Set());
   const [now, setNow] = useState(Date.now());
@@ -22,6 +25,10 @@ export function QRClient({
   const [error, setError] = useState("");
   const [resetting, setResetting] = useState(false);
   const [info, setInfo] = useState("");
+
+  useEffect(() => {
+    setQr(active.qr); setStatus(active.status); setError(""); setInfo(""); setHadirIds(new Set());
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scanUrl = qr ? `${typeof window !== "undefined" ? window.location.origin : ""}/scan/${qr.token}` : "";
 
@@ -33,13 +40,13 @@ export function QRClient({
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
   const poll = useCallback(async () => {
-    const res = await fetch(`/api/qr/status?pertemuanId=${pertemuanId}`);
+    const res = await fetch(`/api/qr/status?pertemuanId=${selectedId}`);
     if (!res.ok) return;
     const data = await res.json();
     setStatus(data.status);
     setHadirIds(new Set(data.hadirIds));
     if (data.qrToken) setQr({ token: data.qrToken, activatedAt: data.activatedAt, durationMin: data.durationMin });
-  }, [pertemuanId]);
+  }, [selectedId]);
 
   useEffect(() => {
     poll();
@@ -49,14 +56,14 @@ export function QRClient({
 
   const expiresAt = qr ? new Date(qr.activatedAt).getTime() + qr.durationMin * 60000 : 0;
   const remainingMs = expiresAt - now;
-  const active = !!qr && remainingMs > 0 && status !== "SELESAI";
+  const activeQr = !!qr && remainingMs > 0 && status !== "SELESAI";
   const mm = Math.max(0, Math.floor(remainingMs / 60000));
   const ss = Math.max(0, Math.floor((remainingMs % 60000) / 1000));
 
   const openQr = async () => {
     setLoading(true); setError(""); setInfo("");
     const res = await fetch("/api/qr/open", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pertemuanId }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pertemuanId: selectedId }),
     });
     const data = await res.json();
     setLoading(false);
@@ -70,79 +77,101 @@ export function QRClient({
       : "Reset pertemuan ini? QR yang sedang aktif akan ditutup dan SEMUA data hadir yang sudah tercatat untuk minggu ini akan dihapus. Tanggal, jam, dan lokasi jadwal TIDAK berubah.";
     if (!confirm(msg)) return;
     setResetting(true); setError(""); setInfo("");
-    const res = await fetch(`/api/mentor/pertemuan/${pertemuanId}/reset`, { method: "POST" });
+    const res = await fetch(`/api/mentor/pertemuan/${selectedId}/reset`, { method: "POST" });
     const data = await res.json();
     setResetting(false);
     if (!res.ok) { setError(data.error || "Gagal mereset."); return; }
     setQr(null);
     setHadirIds(new Set());
     setStatus("TERJADWAL");
+    setLiveItems((list) => list.map((i) => (i.pertemuanId === selectedId ? { ...i, qr: null, status: "TERJADWAL" } : i)));
     setInfo(`Berhasil direset — ${data.clearedAbsensi} data hadir${data.clearedBeritaAcara ? " & berita acara" : ""} dihapus.`);
   };
 
   return (
-    <div className="grid md:grid-cols-[300px_1fr] gap-4">
-      <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl p-5 text-center">
-        <div className="text-xs text-gray-500 mb-2">{kelompokName} · Minggu {week}</div>
-        {active && qrImage ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrImage} alt="QR Absensi" className="mx-auto rounded-lg" width={176} height={176} />
-            <div className="font-display text-xl font-semibold text-primary dark:text-primary-dark mt-3">
-              {String(mm).padStart(2, "0")}:{String(ss).padStart(2, "0")}
-            </div>
-            <div className="text-[11px] text-gray-400 mb-3">sisa waktu berlaku</div>
-            <p className="text-[11px] text-gray-400">Praktikan scan QR ini dengan kamera HP masing-masing.</p>
-          </>
-        ) : (
-          <>
-            <div className="w-44 h-44 mx-auto rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 mb-3">
-              <QrCodeIcon size={44} />
-            </div>
-            <div className="text-xs text-gray-400 mb-3">
-              {status === "SELESAI" ? "Pertemuan sudah selesai." : "QR belum dibuka."}
-            </div>
-            {status !== "SELESAI" && (
-              <button onClick={openQr} disabled={loading} className="w-full bg-primary hover:bg-primary-hover disabled:opacity-60 text-white font-semibold py-2 rounded-lg text-sm">
-                {loading ? "Membuka…" : "Buka QR Absensi"}
-              </button>
-            )}
-          </>
-        )}
-        {error && <div className="text-red-600 text-xs font-semibold mt-2">{error}</div>}
-        {info && <div className="text-primary dark:text-primary-dark text-xs font-semibold mt-2">{info}</div>}
-        <button
-          onClick={resetPertemuan}
-          disabled={resetting}
-          className="mt-4 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg py-2 disabled:opacity-60"
+    <div>
+      {liveItems.length > 1 && (
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          className="mb-4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-full sm:w-72"
         >
-          <RotateCcw size={13} /> {resetting ? "Mereset…" : "Reset Pertemuan Ini"}
-        </button>
-      </div>
-
-      <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl">
-        <div className="p-4 flex items-center justify-between border-b border-[#dcefe2] dark:border-[#1d3527]">
-          <div className="font-semibold text-sm">Daftar Hadir Real-time</div>
-          <div className="text-xs text-gray-500">{hadirIds.size}/{praktikan.length} hadir</div>
+          {liveItems.map((i) => (
+            <option key={i.pertemuanId} value={i.pertemuanId}>
+              {i.kelompokName} — Minggu {i.week}{i.isEmergency ? " (darurat)" : " (berjalan)"}
+            </option>
+          ))}
+        </select>
+      )}
+      {active.isEmergency && (
+        <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 text-xs font-semibold rounded-lg px-3 py-2 mb-4">
+          <AlertTriangle size={14} className="shrink-0" /> Ini pertemuan minggu lalu yang dibuka lewat kunci darurat — segera selesaikan.
         </div>
-        <div className="p-2">
-          {praktikan.map((p) => {
-            const done = hadirIds.has(p.id);
-            return (
-              <div key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                <span>{p.name} <span className="text-gray-400">· {p.npm}</span></span>
-                {done ? (
-                  <span className="flex items-center gap-1 text-primary dark:text-primary-dark text-xs font-semibold">
-                    <CheckCircle2 size={13} /> Hadir
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-gray-400 text-xs">
-                    <Circle size={13} /> Belum
-                  </span>
-                )}
+      )}
+
+      <div className="grid md:grid-cols-[300px_1fr] gap-4">
+        <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl p-5 text-center">
+          <div className="text-xs text-gray-500 mb-2">{active.kelompokName} · Minggu {active.week}</div>
+          {activeQr && qrImage ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrImage} alt="QR Absensi" className="mx-auto rounded-lg" width={176} height={176} />
+              <div className="font-display text-xl font-semibold text-primary dark:text-primary-dark mt-3">
+                {String(mm).padStart(2, "0")}:{String(ss).padStart(2, "0")}
               </div>
-            );
-          })}
+              <div className="text-[11px] text-gray-400 mb-3">sisa waktu berlaku</div>
+              <p className="text-[11px] text-gray-400">Praktikan scan QR ini dengan kamera HP masing-masing.</p>
+            </>
+          ) : (
+            <>
+              <div className="w-44 h-44 mx-auto rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 mb-3">
+                <QrCodeIcon size={44} />
+              </div>
+              <div className="text-xs text-gray-400 mb-3">
+                {status === "SELESAI" ? "Pertemuan sudah selesai." : "QR belum dibuka."}
+              </div>
+              {status !== "SELESAI" && (
+                <button onClick={openQr} disabled={loading} className="w-full bg-primary hover:bg-primary-hover disabled:opacity-60 text-white font-semibold py-2 rounded-lg text-sm">
+                  {loading ? "Membuka…" : "Buka QR Absensi"}
+                </button>
+              )}
+            </>
+          )}
+          {error && <div className="text-red-600 text-xs font-semibold mt-2">{error}</div>}
+          {info && <div className="text-primary dark:text-primary-dark text-xs font-semibold mt-2">{info}</div>}
+          <button
+            onClick={resetPertemuan}
+            disabled={resetting}
+            className="mt-4 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg py-2 disabled:opacity-60"
+          >
+            <RotateCcw size={13} /> {resetting ? "Mereset…" : "Reset Pertemuan Ini"}
+          </button>
+        </div>
+
+        <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl">
+          <div className="p-4 flex items-center justify-between border-b border-[#dcefe2] dark:border-[#1d3527]">
+            <div className="font-semibold text-sm">Daftar Hadir Real-time</div>
+            <div className="text-xs text-gray-500">{hadirIds.size}/{active.praktikan.length} hadir</div>
+          </div>
+          <div className="p-2">
+            {active.praktikan.map((p) => {
+              const done = hadirIds.has(p.id);
+              return (
+                <div key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span>{p.name} <span className="text-gray-400">· {p.npm}</span></span>
+                  {done ? (
+                    <span className="flex items-center gap-1 text-primary dark:text-primary-dark text-xs font-semibold">
+                      <CheckCircle2 size={13} /> Hadir
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-gray-400 text-xs">
+                      <Circle size={13} /> Belum
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

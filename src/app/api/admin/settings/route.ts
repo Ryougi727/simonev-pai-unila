@@ -6,15 +6,15 @@ export async function PATCH(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { appName, qrDurationMinutes, maxPhotos, defaultTheme } = await req.json();
+  const { appName, qrDurationMinutes, maxPhotos, defaultTheme, galeriSubtitle } = await req.json();
   if (!appName?.trim() || !qrDurationMinutes || !maxPhotos || !defaultTheme) {
     return NextResponse.json({ error: "Semua field wajib diisi." }, { status: 400 });
   }
 
   await prisma.settings.upsert({
     where: { id: "singleton" },
-    update: { appName: appName.trim(), qrDurationMinutes, maxPhotos, defaultTheme },
-    create: { id: "singleton", appName: appName.trim(), qrDurationMinutes, maxPhotos, defaultTheme },
+    update: { appName: appName.trim(), qrDurationMinutes, maxPhotos, defaultTheme, galeriSubtitle: galeriSubtitle?.trim() || "Momen Praktikum PAI" },
+    create: { id: "singleton", appName: appName.trim(), qrDurationMinutes, maxPhotos, defaultTheme, galeriSubtitle: galeriSubtitle?.trim() || "Momen Praktikum PAI" },
   });
 
   await prisma.auditLog.create({

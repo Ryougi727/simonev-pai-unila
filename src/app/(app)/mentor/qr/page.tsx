@@ -10,26 +10,38 @@ export default async function QRAbsensiPage() {
   const user = session!.user as any;
 
   const kalender = await prisma.kalenderPraktikum.findUnique({ where: { id: "singleton" } });
-  const week = kalender?.currentWeek ?? 1;
+  const currentWeek = kalender?.currentWeek ?? 1;
 
   const kelompokList = await prisma.kelompok.findMany({
     where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
-    include: { praktikan: true, pertemuan: { where: { week } } },
+    include: {
+      praktikan: true,
+      pertemuan: { where: { OR: [{ week: currentWeek }, { unlockedAt: { not: null } }], status: { not: "SELESAI" } } },
+    },
   });
 
   if (!kelompokList.length) {
     return <p className="text-sm text-gray-500">Anda belum memiliki kelompok binaan.</p>;
   }
 
-  const kelompok = kelompokList[0];
-  const pertemuan = kelompok.pertemuan[0];
+  const items = kelompokList
+    .flatMap((k) =>
+      k.pertemuan.map((p) => ({
+        pertemuanId: p.id, kelompokId: k.id, kelompokName: k.name, week: p.week, status: p.status,
+        isCurrentWeek: p.week === currentWeek, isEmergency: p.week !== currentWeek,
+        qr: p.qrToken ? { token: p.qrToken, activatedAt: p.qrActivatedAt!.toISOString(), durationMin: p.qrDurationMin ?? 10 } : null,
+        praktikan: k.praktikan.map((pr) => ({ id: pr.id, npm: pr.npm, name: pr.name })),
+      }))
+    )
+    .sort((a, b) => (a.isCurrentWeek === b.isCurrentWeek ? a.week - b.week : a.isCurrentWeek ? -1 : 1));
 
-  if (!pertemuan) {
+  if (!items.length) {
     return (
       <div>
         <h1 className="font-display text-2xl font-semibold mb-4">QR Absensi</h1>
         <p className="text-sm text-gray-500">
-          Belum ada jadwal untuk {kelompok.name} pada minggu ke-{week}. Buat jadwal terlebih dahulu di menu Jadwal Praktikum.
+          Belum ada jadwal untuk minggu ke-{currentWeek}. Buat jadwal terlebih dahulu di menu Jadwal Praktikum — atau kalau
+          ini pertemuan minggu lalu yang terlewat, gunakan tombol "Buka Kunci Darurat" di sidebar.
         </p>
       </div>
     );
@@ -38,18 +50,7 @@ export default async function QRAbsensiPage() {
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold mb-4">QR Absensi</h1>
-      <QRClient
-        pertemuanId={pertemuan.id}
-        kelompokName={kelompok.name}
-        week={week}
-        initialStatus={pertemuan.status}
-        initialQr={
-          pertemuan.qrToken
-            ? { token: pertemuan.qrToken, activatedAt: pertemuan.qrActivatedAt!.toISOString(), durationMin: pertemuan.qrDurationMin ?? 10 }
-            : null
-        }
-        praktikan={kelompok.praktikan.map((p) => ({ id: p.id, npm: p.npm, name: p.name }))}
-      />
+      <QRClient items={items} />
     </div>
   );
 }

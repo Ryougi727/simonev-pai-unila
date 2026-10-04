@@ -109,6 +109,7 @@ model Pertemuan {
   beritaAcara   BeritaAcara?
   dokumentasi   Dokumentasi[]
   createdAt     DateTime        @default(now())
+  unlockedAt    DateTime?
 
   @@unique([kelompokId, week])
 }
@@ -152,6 +153,8 @@ model Settings {
   qrDurationMinutes Int    @default(10)
   maxPhotos         Int    @default(3)
   defaultTheme      String @default("light")
+  emergencyPasswordHash String?
+  galeriSubtitle    String @default("Momen Praktikum PAI")
 }
 
 model ActivityLog {
@@ -212,5 +215,11 @@ model BeritaFoto {
   beritaId  String
   berita    Berita   @relation(fields: [beritaId], references: [id], onDelete: Cascade)
   url       String
+  createdAt DateTime @default(now())
+}
+model Galeri {
+  id        String   @id @default(cuid())
+  url       String
+  order     Int      @default(0)
   createdAt DateTime @default(now())
 }

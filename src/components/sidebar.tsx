@@ -1,15 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useState } from "react";
 import {
   LayoutDashboard, Users, Calendar, QrCode, FileText, Image as ImageIcon,
   BarChart3, Settings, LogOut, GraduationCap, UserCog, ClipboardList, Archive,
-  Clock, Megaphone, ShieldCheck, Eye, Menu, X, Newspaper,
+  Clock, Megaphone, ShieldCheck, Eye, X, Newspaper, Images, ChevronLeft, ChevronRight,
 } from "lucide-react";
+import { EmergencyUnlockButton } from "./emergency-unlock";
 
 type MenuItem = { href: string; label: string; icon: any; group?: string };
 
@@ -18,6 +19,7 @@ const MENUS: Record<string, MenuItem[]> = {
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/pengumuman", label: "Pengumuman", icon: Megaphone },
     { href: "/admin/berita", label: "Kelola Berita", icon: Newspaper },
+    { href: "/admin/galeri", label: "Kelola Galeri", icon: Images },
     { href: "/admin/users", label: "Manajemen Pengguna", icon: UserCog, group: "Manajemen" },
     { href: "/admin/kelompok", label: "Manajemen Kelompok", icon: Users, group: "Manajemen" },
     { href: "/admin/praktikan", label: "Manajemen Praktikan", icon: GraduationCap, group: "Manajemen" },
@@ -47,7 +49,11 @@ const MENUS: Record<string, MenuItem[]> = {
   ],
 };
 
-export function Sidebar({ role, name }: { role: string; name: string }) {
+export function Sidebar({
+  role, name, mobileOpen = false, onCloseMobile,
+}: {
+  role: string; name: string; mobileOpen?: boolean; onCloseMobile?: () => void;
+}) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const menu = MENUS[role] ?? [];
@@ -58,13 +64,13 @@ export function Sidebar({ role, name }: { role: string; name: string }) {
   const renderItem = (item: MenuItem) => {
     const active = pathname === item.href;
     const Icon = item.icon;
-
     return (
       <Link
         key={item.href}
         href={item.href}
-        title={item.label}
-        className={`relative flex items-center gap-3 ${isOpen ? "pl-4 pr-3" : "justify-center px-0"} py-2.5 rounded-lg text-sm font-semibold mb-0.5 transition-all ${
+        onClick={() => onCloseMobile?.()}
+        title={!isOpen ? item.label : undefined}
+        className={`relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm font-semibold mb-0.5 transition-colors ${
           active
             ? "bg-primary/15 text-primary dark:bg-primary-dark/15 dark:text-primary-dark"
             : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -78,46 +84,44 @@ export function Sidebar({ role, name }: { role: string; name: string }) {
   };
 
   return (
-    <aside className={`relative shrink-0 border-r border-outline-variant/40 bg-surface-container-low min-h-screen flex flex-col transition-all duration-300 ${isOpen ? "w-[260px]" : "w-[88px]"}`}>
-      <div className={`h-16 flex items-center ${isOpen ? "px-4 justify-start" : "px-2 justify-center"} gap-2.5 shrink-0`}>
-        <button
-          type="button"
-          aria-label={isOpen ? "Tutup sidebar" : "Buka sidebar"}
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((value) => !value)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-        >
-          {isOpen ? <X size={18} /> : <Menu size={18} />}
-        </button>
-
-        {isOpen && (
-          <>
+    <>
+      {mobileOpen && <div className="fixed inset-0 bg-black/50 z-40 sm:hidden" onClick={onCloseMobile} />}
+      <aside
+        className={`${mobileOpen ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} sm:flex sm:relative sm:z-auto
+          shrink-0 border-r border-outline-variant/40 bg-surface-container-low min-h-screen flex-col transition-all duration-300
+          ${isOpen ? "w-[260px]" : "w-[84px]"}`}
+      >
+        <div className="h-16 flex items-center px-4 gap-2.5 shrink-0 justify-between">
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
             <Image src="/logo.png" alt="SIMONEV PAI" width={32} height={32} className="rounded-lg shrink-0" />
-            <span className="font-display text-lg font-bold text-primary dark:text-primary-dark tracking-tight leading-none">SIMONEV PAI</span>
-          </>
-        )}
-      </div>
-
-      <nav className="flex-1 overflow-y-auto py-3 px-3">
-        {ungrouped.map(renderItem)}
-        {groups.map((g) => (
-          <div key={g}>
-            {isOpen && <div className="pt-4 pb-1.5 px-4 text-[11px] font-bold text-outline uppercase tracking-widest opacity-70">{g}</div>}
-            {menu.filter((m) => m.group === g).map(renderItem)}
-          </div>
-        ))}
-      </nav>
-
-      <div className={`border-t border-outline-variant/40 ${isOpen ? "p-3" : "px-2 py-3"}`}>
-        {isOpen && <div className="text-xs font-bold px-1 mb-2 truncate text-on-surface">{name}</div>}
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className={`w-full flex items-center ${isOpen ? "justify-center gap-2" : "justify-center"} text-sm font-semibold border border-outline-variant rounded-lg py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors`}
-          title={isOpen ? "Keluar" : "Keluar"}
-        >
-          <LogOut size={14} /> {isOpen && "Keluar"}
-        </button>
-      </div>
-    </aside>
+            {isOpen && <span className="font-display text-lg font-bold text-primary dark:text-primary-dark tracking-tight leading-none truncate">SIMONEV PAI</span>}
+          </Link>
+          <button onClick={() => setIsOpen((v) => !v)} className="hidden sm:flex text-on-surface-variant hover:text-on-surface shrink-0">
+            {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          </button>
+          <button onClick={onCloseMobile} className="sm:hidden text-on-surface-variant shrink-0"><X size={18} /></button>
+        </div>
+        <nav className="flex-1 overflow-y-auto py-3 px-3">
+          {ungrouped.map(renderItem)}
+          {groups.map((g) => (
+            <div key={g}>
+              {isOpen && <div className="pt-4 pb-1.5 px-4 text-[11px] font-bold text-outline uppercase tracking-widest opacity-70">{g}</div>}
+              {!isOpen && <div className="pt-3" />}
+              {menu.filter((m) => m.group === g).map(renderItem)}
+            </div>
+          ))}
+        </nav>
+        <div className="p-3 border-t border-outline-variant/40 space-y-2">
+          {role === "MENTOR" && <EmergencyUnlockButton collapsed={!isOpen} />}
+          {isOpen && <div className="text-xs font-bold px-1 truncate text-on-surface">{name}</div>}
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="w-full flex items-center justify-center gap-2 text-sm font-semibold border border-outline-variant rounded-lg py-2 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+          >
+            <LogOut size={14} /> {isOpen && "Keluar"}
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

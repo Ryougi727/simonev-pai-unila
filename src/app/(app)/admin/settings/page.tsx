@@ -16,7 +16,16 @@ export default async function AdminSettingsPage() {
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold mb-4">Pengaturan Sistem</h1>
-      <SettingsClient settings={settings ?? { appName: "SIMONEV PAI", qrDurationMinutes: 10, maxPhotos: 3, defaultTheme: "light" }} />
+      <SettingsClient
+        settings={{
+          appName: settings?.appName ?? "SIMONEV PAI",
+          qrDurationMinutes: settings?.qrDurationMinutes ?? 10,
+          maxPhotos: settings?.maxPhotos ?? 3,
+          defaultTheme: settings?.defaultTheme ?? "light",
+          galeriSubtitle: settings?.galeriSubtitle ?? "Momen Praktikum PAI",
+        }}
+        hasEmergencyPassword={!!settings?.emergencyPasswordHash}
+      />
     </div>
   );
 }
