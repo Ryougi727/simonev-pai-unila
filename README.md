@@ -62,7 +62,7 @@ src/middleware.ts          proteksi rute + redirect wajib-ganti-password
 src/app/login               halaman login
 src/app/change-password     halaman wajib ganti password (login pertama)
 src/app/(app)/...           halaman setelah login (sidebar per role)
-src/app/(app)/mentor/qr     QR Absensi sungguhan
+src/app/(app)/mentor/qr     QR Absensi dan input manual status kehadiran praktikan oleh mentor
 src/app/scan/[token]        halaman publik yang dibuka saat QR di-scan
 src/app/api/...             route handler (buka QR, submit absensi, ganti password)
 ```

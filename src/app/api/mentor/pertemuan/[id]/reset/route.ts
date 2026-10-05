@@ -18,7 +18,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   }
 
   const wasSelesai = pertemuan.status === "SELESAI";
-  const hadirCount = pertemuan.absensi.length;
+  const attendanceCount = pertemuan.absensi.length;
   const fotoCount = pertemuan.dokumentasi.length;
 
   // clean up storage files for any documentation photos before wiping the DB rows
@@ -38,8 +38,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   ]);
 
   const detail = wasSelesai
-    ? `Mereset pertemuan yang sudah SELESAI untuk ${pertemuan.kelompok.name} minggu ${pertemuan.week}: menghapus berita acara, ${hadirCount} data hadir, dan ${fotoCount} foto dokumentasi. Jadwal tidak berubah, status kembali ke Terjadwal.`
-    : `Mereset QR & data hadir (${hadirCount} entri) untuk ${pertemuan.kelompok.name} minggu ${pertemuan.week}. Jadwal tidak berubah.`;
+    ? `Mereset pertemuan yang sudah SELESAI untuk ${pertemuan.kelompok.name} minggu ${pertemuan.week}: menghapus berita acara, ${attendanceCount} entri presensi, dan ${fotoCount} foto dokumentasi. Jadwal tidak berubah, status kembali ke Terjadwal.`
+    : `Mereset QR & data presensi (${attendanceCount} entri) untuk ${pertemuan.kelompok.name} minggu ${pertemuan.week}. Jadwal tidak berubah.`;
 
   await prisma.auditLog.create({
     data: { entity: "Jadwal", action: "Reset", detail, userId: user.id },
@@ -48,5 +48,5 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     data: { text: `${user.name} mereset pertemuan minggu ${pertemuan.week} (${pertemuan.kelompok.name}).`, userId: user.id },
   });
 
-  return NextResponse.json({ ok: true, clearedAbsensi: hadirCount, clearedBeritaAcara: wasSelesai, clearedFoto: fotoCount });
+  return NextResponse.json({ ok: true, clearedAbsensi: attendanceCount, clearedBeritaAcara: wasSelesai, clearedFoto: fotoCount });
 }

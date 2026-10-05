@@ -21,8 +21,14 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const existing = await prisma.absensi.findUnique({
     where: { pertemuanId_praktikanId: { pertemuanId: pertemuan.id, praktikanId } },
   });
-  if (existing) return NextResponse.json({ error: "Anda sudah melakukan absensi untuk pertemuan ini." }, { status: 400 });
+  if (existing?.status === "HADIR") {
+    return NextResponse.json({ error: "Anda sudah melakukan absensi untuk pertemuan ini." }, { status: 400 });
+  }
 
-  await prisma.absensi.create({ data: { pertemuanId: pertemuan.id, praktikanId } });
+  if (existing) {
+    await prisma.absensi.update({ where: { id: existing.id }, data: { status: "HADIR" } });
+  } else {
+    await prisma.absensi.create({ data: { pertemuanId: pertemuan.id, praktikanId } });
+  }
   return NextResponse.json({ ok: true });
 }

@@ -22,6 +22,6 @@ export async function GET(req: Request) {
     qrToken: pertemuan.qrToken,
     activatedAt: pertemuan.qrActivatedAt,
     durationMin: pertemuan.qrDurationMin,
-    hadirIds: pertemuan.absensi.map((a) => a.praktikanId),
+    attendance: Object.fromEntries(pertemuan.absensi.map((a) => [a.praktikanId, a.status])),
   });
 }

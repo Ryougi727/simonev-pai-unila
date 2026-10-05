@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import QRCode from "qrcode";
-import { QrCode as QrCodeIcon, CheckCircle2, Circle, RotateCcw, AlertTriangle } from "lucide-react";
+import { QrCode as QrCodeIcon, RotateCcw, AlertTriangle } from "lucide-react";
 
 type Praktikan = { id: string; npm: string; name: string };
+type AbsensiStatus = "HADIR" | "IZIN" | "SAKIT" | "TIDAK_HADIR";
 type QrInfo = { token: string; activatedAt: string; durationMin: number };
 type Item = {
   pertemuanId: string; kelompokId: string; kelompokName: string; week: number; status: string;
@@ -19,15 +20,16 @@ export function QRClient({ items }: { items: Item[] }) {
   const [qr, setQr] = useState<QrInfo | null>(active.qr);
   const [status, setStatus] = useState(active.status);
   const [qrImage, setQrImage] = useState<string | null>(null);
-  const [hadirIds, setHadirIds] = useState<Set<string>>(new Set());
+  const [attendance, setAttendance] = useState<Record<string, AbsensiStatus>>({});
   const [now, setNow] = useState(Date.now());
   const [loading, setLoading] = useState(false);
+  const [savingAttendance, setSavingAttendance] = useState(false);
   const [error, setError] = useState("");
   const [resetting, setResetting] = useState(false);
   const [info, setInfo] = useState("");
 
   useEffect(() => {
-    setQr(active.qr); setStatus(active.status); setError(""); setInfo(""); setHadirIds(new Set());
+    setQr(active.qr); setStatus(active.status); setError(""); setInfo(""); setAttendance({});
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scanUrl = qr ? `${typeof window !== "undefined" ? window.location.origin : ""}/scan/${qr.token}` : "";
@@ -44,7 +46,7 @@ export function QRClient({ items }: { items: Item[] }) {
     if (!res.ok) return;
     const data = await res.json();
     setStatus(data.status);
-    setHadirIds(new Set(data.hadirIds));
+    setAttendance(data.attendance ?? {});
     if (data.qrToken) setQr({ token: data.qrToken, activatedAt: data.activatedAt, durationMin: data.durationMin });
   }, [selectedId]);
 
@@ -73,8 +75,8 @@ export function QRClient({ items }: { items: Item[] }) {
 
   const resetPertemuan = async () => {
     const msg = status === "SELESAI"
-      ? "Pertemuan ini sudah SELESAI (berita acara sudah terisi). Reset akan MENGHAPUS berita acara, semua data hadir, dan foto dokumentasi untuk minggu ini, lalu status kembali ke Terjadwal. Tanggal/jam/lokasi jadwal tidak berubah. Lanjutkan?"
-      : "Reset pertemuan ini? QR yang sedang aktif akan ditutup dan SEMUA data hadir yang sudah tercatat untuk minggu ini akan dihapus. Tanggal, jam, dan lokasi jadwal TIDAK berubah.";
+      ? "Pertemuan ini sudah SELESAI (berita acara sudah terisi). Reset akan MENGHAPUS berita acara, semua data presensi, dan foto dokumentasi untuk minggu ini, lalu status kembali ke Terjadwal. Tanggal/jam/lokasi jadwal tidak berubah. Lanjutkan?"
+      : "Reset pertemuan ini? QR yang sedang aktif akan ditutup dan SEMUA data presensi yang sudah tercatat untuk minggu ini akan dihapus. Tanggal, jam, dan lokasi jadwal TIDAK berubah.";
     if (!confirm(msg)) return;
     setResetting(true); setError(""); setInfo("");
     const res = await fetch(`/api/mentor/pertemuan/${selectedId}/reset`, { method: "POST" });
@@ -82,11 +84,37 @@ export function QRClient({ items }: { items: Item[] }) {
     setResetting(false);
     if (!res.ok) { setError(data.error || "Gagal mereset."); return; }
     setQr(null);
-    setHadirIds(new Set());
+    setAttendance({});
     setStatus("TERJADWAL");
     setLiveItems((list) => list.map((i) => (i.pertemuanId === selectedId ? { ...i, qr: null, status: "TERJADWAL" } : i)));
-    setInfo(`Berhasil direset — ${data.clearedAbsensi} data hadir${data.clearedBeritaAcara ? " & berita acara" : ""} dihapus.`);
+    setInfo(`Berhasil direset — ${data.clearedAbsensi} entri presensi${data.clearedBeritaAcara ? " & berita acara" : ""} dihapus.`);
   };
+
+  const updateAttendance = async (praktikanId: string, value: string) => {
+    setSavingAttendance(true); setError(""); setInfo("");
+    try {
+      const res = await fetch(`/api/mentor/pertemuan/${selectedId}/absensi`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ praktikanId, status: value || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Gagal menyimpan presensi."); return; }
+      setAttendance((current) => {
+        const next = { ...current };
+        if (value) next[praktikanId] = value as AbsensiStatus;
+        else delete next[praktikanId];
+        return next;
+      });
+      setInfo("Presensi berhasil diperbarui.");
+    } catch {
+      setError("Tidak dapat menyimpan presensi. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setSavingAttendance(false);
+    }
+  };
+
+  const hadirCount = Object.values(attendance).filter((value) => value === "HADIR").length;
 
   return (
     <div>
@@ -150,27 +178,32 @@ export function QRClient({ items }: { items: Item[] }) {
 
         <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl">
           <div className="p-4 flex items-center justify-between border-b border-[#dcefe2] dark:border-[#1d3527]">
-            <div className="font-semibold text-sm">Daftar Hadir Real-time</div>
-            <div className="text-xs text-gray-500">{hadirIds.size}/{active.praktikan.length} hadir</div>
+            <div className="font-semibold text-sm">Input Kehadiran Praktikan</div>
+            <div className="text-xs text-gray-500">{hadirCount}/{active.praktikan.length} hadir</div>
           </div>
           <div className="p-2">
             {active.praktikan.map((p) => {
-              const done = hadirIds.has(p.id);
+              const value = attendance[p.id] ?? "";
               return (
-                <div key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                <div key={p.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 text-sm border-b last:border-0 border-[#dcefe2] dark:border-[#1d3527]">
                   <span>{p.name} <span className="text-gray-400">· {p.npm}</span></span>
-                  {done ? (
-                    <span className="flex items-center gap-1 text-primary dark:text-primary-dark text-xs font-semibold">
-                      <CheckCircle2 size={13} /> Hadir
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-gray-400 text-xs">
-                      <Circle size={13} /> Belum
-                    </span>
-                  )}
+                  <select
+                    value={value}
+                    onChange={(event) => updateAttendance(p.id, event.target.value)}
+                    disabled={savingAttendance || status === "SELESAI"}
+                    aria-label={`Presensi ${p.name}`}
+                    className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-xs outline-none focus:border-primary disabled:opacity-60"
+                  >
+                    <option value="">Belum dicatat</option>
+                    <option value="HADIR">Hadir</option>
+                    <option value="IZIN">Izin</option>
+                    <option value="SAKIT">Sakit</option>
+                    <option value="TIDAK_HADIR">Tidak hadir (tanpa keterangan)</option>
+                  </select>
                 </div>
               );
             })}
+            {!active.praktikan.length && <div className="px-3 py-6 text-center text-xs text-gray-400">Belum ada praktikan di kelompok ini.</div>}
           </div>
         </div>
       </div>

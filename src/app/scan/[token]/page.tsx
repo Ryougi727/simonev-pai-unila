@@ -22,7 +22,7 @@ export default async function ScanPage({ params }: { params: { token: string } }
     return <Center><p className="text-red-600 font-semibold">QR absensi ini sudah kedaluwarsa. Hubungi mentor Anda.</p></Center>;
   }
 
-  const scannedIds = new Set(pertemuan.absensi.map((a) => a.praktikanId));
+  const scannedIds = new Set(pertemuan.absensi.filter((a) => a.status === "HADIR").map((a) => a.praktikanId));
 
   return (
     <Center>

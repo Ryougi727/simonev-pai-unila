@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { summarizeAbsence } from "@/lib/attendance-summary";
 import { BeritaClient } from "./berita-client";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default async function MentorBeritaPage() {
           where: { OR: [{ week: currentWeek }, { unlockedAt: { not: null } }], status: { not: "SELESAI" } },
           include: { absensi: true, beritaAcara: true },
         },
+        praktikan: { select: { id: true, name: true, npm: true } },
         _count: { select: { praktikan: true } },
       },
       orderBy: { name: "asc" },
@@ -32,7 +34,11 @@ export default async function MentorBeritaPage() {
         kelompok: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
         status: "SELESAI",
       },
-      include: { beritaAcara: true, kelompok: true },
+      include: {
+        beritaAcara: true,
+        kelompok: { include: { praktikan: { select: { id: true, name: true, npm: true } } } },
+        absensi: true,
+      },
       orderBy: [{ week: "desc" }],
     }),
   ]);
@@ -51,7 +57,8 @@ export default async function MentorBeritaPage() {
           materiDefault: m ? `${m.tahsin} & ${m.keislaman}` : "",
           pertemuan: {
             id: p.id, week: p.week, date: p.date.toISOString().slice(0, 10), time: p.time, location: p.location,
-            status: p.status, hadirCount: p.absensi.length,
+            status: p.status, hadirCount: p.absensi.filter((a) => a.status === "HADIR").length,
+            absenceBreakdown: summarizeAbsence(k.praktikan, p.absensi),
             beritaAcara: p.beritaAcara
               ? {
                   hari: p.beritaAcara.hari, tanggal: p.beritaAcara.tanggal.toISOString().slice(0, 10),
@@ -72,6 +79,7 @@ export default async function MentorBeritaPage() {
       hari: p.beritaAcara!.hari, tanggal: p.beritaAcara!.tanggal.toISOString(),
       lokasi: p.beritaAcara!.lokasi, materi: p.beritaAcara!.materi, catatan: p.beritaAcara!.catatan,
       hadir: p.beritaAcara!.hadir, tidakHadir: p.beritaAcara!.tidakHadir,
+      absenceBreakdown: summarizeAbsence(p.kelompok.praktikan, p.absensi),
     }));
 
   return (

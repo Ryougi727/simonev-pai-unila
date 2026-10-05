@@ -19,6 +19,13 @@ enum PertemuanStatus {
   SELESAI
 }
 
+enum AbsensiStatus {
+  HADIR
+  IZIN
+  SAKIT
+  TIDAK_HADIR
+}
+
 model User {
   id                 String   @id @default(cuid())
   role               Role
@@ -120,6 +127,7 @@ model Absensi {
   pertemuan   Pertemuan @relation(fields: [pertemuanId], references: [id], onDelete: Cascade)
   praktikanId String
   praktikan   Praktikan @relation(fields: [praktikanId], references: [id], onDelete: Cascade)
+  status      AbsensiStatus @default(HADIR)
   scannedAt   DateTime  @default(now())
 
   @@unique([pertemuanId, praktikanId])

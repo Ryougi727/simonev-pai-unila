@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   const totalPeserta = await prisma.praktikan.count({ where: { kelompokId: pertemuan.kelompokId } });
-  const hadir = pertemuan.absensi.length;
+  const hadir = pertemuan.absensi.filter((a) => a.status === "HADIR").length;
   const tidakHadir = Math.max(0, totalPeserta - hadir);
 
   await prisma.$transaction([

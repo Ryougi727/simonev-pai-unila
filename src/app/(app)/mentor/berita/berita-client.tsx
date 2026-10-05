@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, History, CheckCircle2 } from "lucide-react";
 
 const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+type AbsenceBreakdown = { izin: string[]; sakit: string[]; tanpaKeterangan: string[] };
 
 type Pertemuan = {
   id: string; week: number; date: string; time: string; location: string; status: string; hadirCount: number;
+  absenceBreakdown: AbsenceBreakdown;
   beritaAcara: { hari: string; tanggal: string; lokasi: string; materi: string; catatan: string | null; hadir: number; tidakHadir: number } | null;
 };
 type Item = {
@@ -17,6 +19,7 @@ type Item = {
 type HistoryEntry = {
   id: string; week: number; kelompokName: string; hari: string; tanggal: string; lokasi: string;
   materi: string; catatan: string | null; hadir: number; tidakHadir: number;
+  absenceBreakdown: AbsenceBreakdown;
 };
 
 function buildForm(item: Item) {
@@ -90,6 +93,7 @@ export function BeritaClient({ items, history }: { items: Item[]; history: Histo
                 <Field label="Jumlah Hadir"><input value={item.pertemuan.hadirCount} disabled className={inputCls} /></Field>
                 <Field label="Jumlah Tidak Hadir"><input value={Math.max(0, item.totalPeserta - item.pertemuan.hadirCount)} disabled className={inputCls} /></Field>
               </div>
+              <AbsenceDetails breakdown={item.pertemuan.absenceBreakdown} />
               <button onClick={submit} disabled={saving} className="w-full text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg py-2.5">
                 {saving ? "Menyimpan…" : "Simpan & Tandai Selesai"}
               </button>
@@ -117,6 +121,7 @@ export function BeritaClient({ items, history }: { items: Item[]; history: Histo
                   <div><b>Materi:</b> {h.materi}</div>
                   {h.catatan && <div><b>Catatan:</b> {h.catatan}</div>}
                   <div><b>Kehadiran:</b> {h.hadir} hadir · {h.tidakHadir} tidak hadir</div>
+                  <AbsenceDetails breakdown={h.absenceBreakdown} />
                 </div>
               </div>
             ))}
@@ -124,6 +129,25 @@ export function BeritaClient({ items, history }: { items: Item[]; history: Histo
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function AbsenceDetails({ breakdown }: { breakdown: AbsenceBreakdown }) {
+  const categories = [
+    ["Izin", breakdown.izin],
+    ["Sakit", breakdown.sakit],
+    ["Tidak ada keterangan", breakdown.tanpaKeterangan],
+  ] as const;
+
+  return (
+    <div className="text-xs text-gray-500 space-y-1 mb-4">
+      <div className="font-bold text-gray-600 dark:text-gray-300">Rincian tidak hadir</div>
+      {categories.map(([label, people]) => (
+        <div key={label}>
+          <b>{label}:</b> {people.length}{people.length ? ` — ${people.join(", ")}` : ""}
+        </div>
+      ))}
     </div>
   );
 }
