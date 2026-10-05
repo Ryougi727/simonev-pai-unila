@@ -42,8 +42,8 @@ export default async function LandingPage() {
             Sistem Monitoring dan Evaluasi Praktikum PAI
           </h1>
           <p className="text-sm sm:text-base text-on-surface-variant max-w-xl mx-auto leading-relaxed">
-            Informasi berita, kajian, dan agenda seputar Praktikum Pendidikan Agama Islam — dikelola oleh Bina Rohani
-            Mahasiswa Islam Universitas Lampung.
+            Informasi berita, kajian, dan agenda seputar Praktikum Pendidikan Agama Islam — dikelola oleh Tim Praktikum PAI
+            Universitas Lampung.
           </p>
         </div>
       </section>
