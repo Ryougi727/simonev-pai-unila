@@ -184,7 +184,8 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       </div>
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-[11px] uppercase text-gray-400 text-left">
               <th className="px-4 py-2.5 font-bold">Nama</th>
@@ -227,6 +228,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Add modal */}
@@ -283,8 +285,8 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
         <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFileChosen} className="text-sm mb-3" />
         {importError && <div className="text-red-600 text-xs font-semibold mb-2">{importError}</div>}
         {importRows.length > 0 && (
-          <div className="max-h-56 overflow-y-auto border border-[#dcefe2] dark:border-[#1d3527] rounded-lg mb-3">
-            <table className="w-full text-xs">
+          <div className="max-h-56 overflow-x-auto overflow-y-auto border border-[#dcefe2] dark:border-[#1d3527] rounded-lg mb-3">
+            <table className="w-full min-w-[480px] text-xs">
               <thead><tr className="text-left text-gray-400"><th className="px-2 py-1.5">Nama</th><th className="px-2 py-1.5">Fakultas</th><th className="px-2 py-1.5">Email</th></tr></thead>
               <tbody>
                 {importRows.map((r, i) => (

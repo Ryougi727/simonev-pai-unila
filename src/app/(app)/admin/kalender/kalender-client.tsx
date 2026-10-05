@@ -61,7 +61,8 @@ export function KalenderClient({ kalender, materi }: { kalender: Kalender; mater
             {savingMateri ? "Menyimpan…" : "Simpan Materi"}
           </button>
         </div>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-[11px] uppercase text-gray-400 text-left">
               <th className="px-4 py-2.5 font-bold">Minggu</th>
@@ -82,6 +83,7 @@ export function KalenderClient({ kalender, materi }: { kalender: Kalender; mater
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

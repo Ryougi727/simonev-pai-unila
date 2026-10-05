@@ -297,20 +297,22 @@ function Panel({ title, children, className = "", noPadding = false }: { title: 
 
 function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="text-[11px] uppercase text-on-surface-variant text-left">
-          {head.map((h) => <th key={h} className="px-5 py-2.5 font-bold">{h}</th>)}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i} className="border-t border-outline-variant/30">
-            {r.map((c, j) => <td key={j} className={`px-5 py-3 ${j === 0 ? "font-semibold text-on-surface" : "text-on-surface-variant"}`}>{c}</td>)}
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px] text-sm">
+        <thead>
+          <tr className="text-[11px] uppercase text-on-surface-variant text-left">
+            {head.map((h) => <th key={h} className="px-5 py-2.5 font-bold">{h}</th>)}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t border-outline-variant/30">
+              {r.map((c, j) => <td key={j} className={`px-5 py-3 ${j === 0 ? "font-semibold text-on-surface" : "text-on-surface-variant"}`}>{c}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

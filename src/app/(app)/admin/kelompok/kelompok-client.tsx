@@ -105,7 +105,8 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
       </div>
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-[11px] uppercase text-gray-400 text-left">
               <th className="px-4 py-2.5 font-bold">Kelompok</th>
@@ -135,6 +136,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Add/Edit modal */}
