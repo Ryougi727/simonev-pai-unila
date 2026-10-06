@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { ArrowRight } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { PublicMobileNav } from "./public-mobile-nav";
+import { PublicMobileNav } from "@/components/public-mobile-nav";
 
 export async function PublicHeader() {
   const session = await getServerSession(authOptions);
