@@ -70,7 +70,7 @@ export function ThemeSwitcher() {
         <div
           role="menu"
           aria-label="Pilihan tema"
-          className="fixed right-4 sm:right-5 top-[4.5rem] w-60 rounded-2xl border border-outline-variant/60 bg-surface shadow-2xl p-2 z-[9999]"
+          className="theme-switcher-menu fixed top-[4.5rem] rounded-2xl border border-outline-variant/60 bg-surface shadow-2xl p-2 z-[9999]"
         >
           <div className="px-3 pt-2 pb-2.5">
             <div className="flex items-center gap-2 text-sm font-bold text-on-surface">
