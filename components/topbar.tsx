@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Search, Bell, Menu, Loader2 } from "lucide-react";
-import { ThemeSwitcher } from "../../components/theme-switcher";
+import { ThemeSwitcher } from "./theme-switcher";
 
 const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", PJ: "PJ Fakultas", MENTOR: "Mentor" };
 
@@ -15,6 +15,7 @@ export function Topbar({
   role: string; faculty?: string; name: string; photoUrl?: string | null;
   hasRecentPengumuman?: boolean; onOpenMobileMenu?: () => void;
 }) {
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);

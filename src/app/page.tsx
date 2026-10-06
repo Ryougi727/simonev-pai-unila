@@ -33,6 +33,14 @@ export default async function LandingPage() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <IslamicPatternBackground />
+        <div className="hero-theme-effects" aria-hidden="true">
+          {Array.from({ length: 14 }, (_, index) => (
+            <span className="sakura-petal" key={`petal-${index}`} />
+          ))}
+          {Array.from({ length: 12 }, (_, index) => (
+            <span className="neon-laser" key={`laser-${index}`} />
+          ))}
+        </div>
         <div className="relative z-10 max-w-6xl mx-auto px-5 py-20 sm:py-28 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 dark:bg-primary-dark/10 text-primary dark:text-primary-dark mb-5">
             <Sparkles size={13} />

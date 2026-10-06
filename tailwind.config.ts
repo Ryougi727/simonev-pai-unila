@@ -14,12 +14,12 @@ const colorTokens = {
   // (bg-primary, bg-primary-soft, dark:bg-primary-dark, etc.) keeps working.
   // Values refreshed to match the "Academic Emerald" reference palette.
   primary: {
-    DEFAULT: "#2d7a4d",
-    hover: "#215c39",
-    soft: "#dff5e6",
-    dark: "#8ad7a2",
-    darkHover: "#a5f4bc",
-    darkSoft: "#17301f",
+    DEFAULT: withOpacity("--primary"),
+    hover: withOpacity("--primary-hover"),
+    soft: withOpacity("--primary-soft"),
+    dark: withOpacity("--primary-dark"),
+    darkHover: withOpacity("--primary-dark-hover"),
+    darkSoft: withOpacity("--primary-dark-soft"),
   },
   // new tokens (see globals.css) — auto-adapt to light/dark with no
   // `dark:` prefix, and support opacity modifiers via withOpacity().

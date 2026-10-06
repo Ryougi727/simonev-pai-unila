@@ -234,8 +234,9 @@ function Hero({
 }) {
   const Cta = cta?.icon;
   return (
-    <div className="relative rounded-3xl bg-surface-container overflow-hidden shadow-sm border border-outline-variant/30">
+    <div className="dashboard-hero relative rounded-3xl bg-surface-container overflow-hidden shadow-sm border border-outline-variant/30">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 dark:from-primary-dark/10 via-surface-container to-surface-container-low pointer-events-none" />
+      <div className="dashboard-hero-image absolute inset-0 pointer-events-none" aria-hidden="true" />
       <div className="absolute top-0 right-0 p-6 opacity-[0.15] pointer-events-none hidden sm:block">
         <svg width="160" height="160" viewBox="0 0 200 200" fill="none" className="text-primary dark:text-primary-dark">
           <circle cx="100" cy="100" r="80" stroke="currentColor" strokeDasharray="10 10" strokeWidth="2" />

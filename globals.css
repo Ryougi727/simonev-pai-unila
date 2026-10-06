@@ -5,18 +5,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Manrope:wght@400;500;600;700;800&display=swap");
 
 /*
-  "Academic Emerald" design tokens — adapted from a Google Stitch reference
-  (DESIGN.md) supplied by the user. Light = "Clean Ivory", Dark = the
-  reference's palette almost verbatim.
-
-  Values are stored as "R G B" channel triplets (not hex) so Tailwind's
-  opacity modifiers (bg-surface-container/40, border-outline-variant/30,
-  etc.) work correctly — see the withOpacity() helper in tailwind.config.ts.
-  These variables auto-swap when next-themes toggles the `.dark` class on
-  <html>, so any component using e.g. `bg-surface-container` adapts to both
-  themes with no `dark:` prefix needed.
+  SIMONEV PAI design tokens.
+  Light/Dark are the original themes. Sakura and Neon are additional themes.
+  Values are stored as "R G B" channel triplets so Tailwind opacity modifiers
+  such as bg-primary/15 continue to work.
 */
+
 :root {
+  /* Original Light */
   --background: 249 250 251;
   --on-background: 20 32 26;
   --surface: 255 255 255;
@@ -49,6 +45,7 @@
 }
 
 .dark {
+  /* Original Dark — preserved from the existing SIMONEV theme */
   --background: 17 20 21;
   --on-background: 225 227 228;
   --surface: 17 20 21;
@@ -146,32 +143,6 @@
   --on-error-container: 255 213 220;
 }
 
-/* Keep legacy light-surface utility classes readable in the Neon theme. */
-.neon .bg-white {
-  background-color: rgb(var(--surface));
-}
-
-.neon .bg-gray-50 {
-  background-color: rgb(var(--surface-container-low));
-}
-
-.neon .bg-gray-100 {
-  background-color: rgb(var(--surface-container-high));
-}
-
-.neon [class~="border-[#dcefe2]"] {
-  border-color: rgb(var(--outline-variant));
-}
-
-.neon .text-gray-600 {
-  color: rgb(var(--on-surface));
-}
-
-.neon .text-gray-500,
-.neon .text-gray-400 {
-  color: rgb(var(--on-surface-variant));
-}
-
 html.sakura,
 html.neon {
   color-scheme: light;
@@ -198,103 +169,6 @@ body {
 .neon .shadow-lg,
 .neon .shadow-xl {
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45), 0 0 28px rgba(168, 85, 247, 0.08);
-}
-
-.sakura .dashboard-hero-image {
-  background: url("/themes/sakura.png") center / cover no-repeat;
-  opacity: 0.22;
-}
-
-.neon .dashboard-hero-image {
-  background: url("/themes/neon.png") center / cover no-repeat;
-  opacity: 0.3;
-}
-
-.hero-theme-effects {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.sakura-petal,
-.neon-laser {
-  display: none;
-  position: absolute;
-  top: -12%;
-  animation-iteration-count: infinite;
-  animation-timing-function: linear;
-}
-
-.sakura .sakura-petal {
-  display: block;
-  width: 12px;
-  height: 17px;
-  border-radius: 75% 15% 75% 15%;
-  background: linear-gradient(145deg, rgba(255, 214, 228, 0.9), rgba(232, 139, 165, 0.5));
-  box-shadow: 0 0 12px rgba(232, 139, 165, 0.28);
-  animation-name: sakura-fall;
-}
-
-.sakura-petal:nth-child(1) { left: 8%; animation-duration: 11s; animation-delay: -2s; }
-.sakura-petal:nth-child(2) { left: 15%; animation-duration: 15s; animation-delay: -8s; }
-.sakura-petal:nth-child(3) { left: 23%; animation-duration: 13s; animation-delay: -5s; }
-.sakura-petal:nth-child(4) { left: 30%; animation-duration: 17s; animation-delay: -12s; }
-.sakura-petal:nth-child(5) { left: 38%; animation-duration: 11s; animation-delay: -3s; }
-.sakura-petal:nth-child(6) { left: 45%; animation-duration: 15s; animation-delay: -10s; }
-.sakura-petal:nth-child(7) { left: 53%; animation-duration: 13s; animation-delay: -6s; }
-.sakura-petal:nth-child(8) { left: 60%; animation-duration: 17s; animation-delay: -14s; }
-.sakura-petal:nth-child(9) { left: 68%; animation-duration: 11s; animation-delay: -4s; }
-.sakura-petal:nth-child(10) { left: 75%; animation-duration: 15s; animation-delay: -11s; }
-.sakura-petal:nth-child(11) { left: 83%; animation-duration: 13s; animation-delay: -7s; }
-.sakura-petal:nth-child(12) { left: 90%; animation-duration: 17s; animation-delay: -15s; }
-.sakura-petal:nth-child(13) { left: 96%; animation-duration: 11s; animation-delay: -9s; }
-.sakura-petal:nth-child(14) { left: 4%; animation-duration: 15s; animation-delay: -13s; }
-
-.neon .neon-laser {
-  display: block;
-  width: 2px;
-  height: 72px;
-  background: linear-gradient(to bottom, transparent, rgba(34, 211, 238, 0.05) 20%, rgba(34, 211, 238, 0.85) 75%, rgba(168, 85, 247, 0.75));
-  box-shadow: 0 0 10px rgba(34, 211, 238, 0.75), 0 0 22px rgba(168, 85, 247, 0.35);
-  animation-name: neon-rain;
-}
-
-.neon-laser:nth-child(15) { left: 5%; animation-duration: 3s; animation-delay: -1s; }
-.neon-laser:nth-child(16) { left: 14%; animation-duration: 3.9s; animation-delay: -2.5s; }
-.neon-laser:nth-child(17) { left: 23%; animation-duration: 4.8s; animation-delay: -4s; }
-.neon-laser:nth-child(18) { left: 32%; animation-duration: 5.7s; animation-delay: -5.5s; }
-.neon-laser:nth-child(19) { left: 41%; animation-duration: 3s; animation-delay: -2s; }
-.neon-laser:nth-child(20) { left: 50%; animation-duration: 3.9s; animation-delay: -4.5s; }
-.neon-laser:nth-child(21) { left: 59%; animation-duration: 4.8s; animation-delay: -1.5s; }
-.neon-laser:nth-child(22) { left: 68%; animation-duration: 5.7s; animation-delay: -3.5s; }
-.neon-laser:nth-child(23) { left: 77%; animation-duration: 3s; animation-delay: -5s; }
-.neon-laser:nth-child(24) { left: 86%; animation-duration: 3.9s; animation-delay: -2.8s; }
-.neon-laser:nth-child(25) { left: 95%; animation-duration: 4.8s; animation-delay: -4.2s; }
-.neon-laser:nth-child(26) { left: 10%; animation-duration: 5.7s; animation-delay: -0.7s; }
-
-@keyframes sakura-fall {
-  0% { transform: translate3d(0, -5vh, 0) rotate(0deg); }
-  25% { transform: translate3d(28px, 25vh, 0) rotate(110deg); }
-  50% { transform: translate3d(-18px, 50vh, 0) rotate(220deg); }
-  75% { transform: translate3d(24px, 75vh, 0) rotate(300deg); }
-  100% { transform: translate3d(-8px, 115vh, 0) rotate(420deg); }
-}
-
-@keyframes neon-rain {
-  0% { transform: translate3d(0, -15vh, 0) rotate(8deg); opacity: 0; }
-  10% { opacity: 0.9; }
-  90% { opacity: 0.75; }
-  100% { transform: translate3d(-42px, 115vh, 0) rotate(8deg); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sakura .sakura-petal,
-  .neon .neon-laser {
-    animation: none;
-    display: none;
-  }
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
