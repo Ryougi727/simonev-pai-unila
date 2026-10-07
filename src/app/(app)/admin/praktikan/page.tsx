@@ -12,8 +12,14 @@ export default async function AdminPraktikanPage() {
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
   const [praktikan, kelompok] = await Promise.all([
-    prisma.praktikan.findMany({ include: { kelompok: true }, orderBy: { name: "asc" } }),
-    prisma.kelompok.findMany({ orderBy: { name: "asc" } }),
+    prisma.praktikan.findMany({
+      select: {
+        id: true, npm: true, name: true, fakultas: true, jurusan: true, prodi: true, kelompokId: true,
+        kelompok: { select: { name: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.kelompok.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   return (

@@ -11,7 +11,7 @@ export default async function ActivityLogPage() {
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
   const logs = await prisma.activityLog.findMany({
-    include: { user: true },
+    select: { id: true, at: true, text: true, user: { select: { name: true } } },
     orderBy: { at: "desc" },
     take: 200,
   });

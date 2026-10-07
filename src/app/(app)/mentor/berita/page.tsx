@@ -18,26 +18,42 @@ export default async function MentorBeritaPage() {
   const [kelompokList, allMateri, historyPertemuan] = await Promise.all([
     prisma.kelompok.findMany({
       where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
-      include: {
+      select: {
+        id: true,
+        name: true,
         pertemuan: {
           where: { OR: [{ week: currentWeek }, { unlockedAt: { not: null } }], status: { not: "SELESAI" } },
-          include: { absensi: true, beritaAcara: true },
+          select: {
+            id: true, week: true, date: true, time: true, location: true, status: true,
+            absensi: { select: { praktikanId: true, status: true } },
+            beritaAcara: {
+              select: { hari: true, tanggal: true, lokasi: true, materi: true, catatan: true, hadir: true, tidakHadir: true },
+            },
+          },
         },
         praktikan: { select: { id: true, name: true, npm: true } },
         _count: { select: { praktikan: true } },
       },
       orderBy: { name: "asc" },
     }),
-    prisma.materi.findMany(),
+    prisma.materi.findMany({ select: { week: true, tahsin: true, keislaman: true } }),
     prisma.pertemuan.findMany({
       where: {
         kelompok: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
         status: "SELESAI",
       },
-      include: {
-        beritaAcara: true,
-        kelompok: { include: { praktikan: { select: { id: true, name: true, npm: true } } } },
-        absensi: true,
+      select: {
+        id: true, week: true,
+        beritaAcara: {
+          select: { hari: true, tanggal: true, lokasi: true, materi: true, catatan: true, hadir: true, tidakHadir: true },
+        },
+        kelompok: {
+          select: {
+            name: true,
+            praktikan: { select: { id: true, name: true, npm: true } },
+          },
+        },
+        absensi: { select: { praktikanId: true, status: true } },
       },
       orderBy: [{ week: "desc" }],
     }),

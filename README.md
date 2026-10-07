@@ -27,6 +27,8 @@ npm run db:push    # membuat semua tabel di Supabase sesuai prisma/schema.prisma
 npm run db:seed    # mengisi akun demo, kelompok, praktikan, materi, kalender
 ```
 
+Jalankan `npm run db:push` setelah mengambil perubahan skema agar indeks performa terbaru ikut diterapkan.
+
 Setelah seed selesai, terminal akan menampilkan daftar username demo. Password:
 - Admin → `admin123`
 - PJ & Mentor → `praktikum2026`

@@ -11,12 +11,21 @@ export default async function MentorDokumentasiPage() {
   const user = session?.user as any;
   if (!user || user.role !== "MENTOR") redirect("/dashboard");
 
-  const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
-  const kelompokList = await prisma.kelompok.findMany({
-    where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
-    include: { pertemuan: { orderBy: { week: "desc" }, include: { dokumentasi: true } } },
-    orderBy: { name: "asc" },
-  });
+  const [settings, kelompokList] = await Promise.all([
+    prisma.settings.findUnique({ where: { id: "singleton" }, select: { maxPhotos: true } }),
+    prisma.kelompok.findMany({
+      where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
+      select: {
+        id: true,
+        name: true,
+        pertemuan: {
+          orderBy: { week: "desc" },
+          select: { id: true, week: true, dokumentasi: { select: { id: true, url: true } } },
+        },
+      },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (!kelompokList.length) return <p className="text-sm text-gray-500">Anda belum memiliki kelompok binaan.</p>;
 

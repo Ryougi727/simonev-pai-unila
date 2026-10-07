@@ -22,7 +22,10 @@ export default async function DashboardPage() {
 
 /* ---------------------------------- ADMIN ---------------------------------- */
 async function AdminDashboard({ name }: { name: string }) {
-  const kalender = await prisma.kalenderPraktikum.findUnique({ where: { id: "singleton" } });
+  const kalender = await prisma.kalenderPraktikum.findUnique({
+    where: { id: "singleton" },
+    select: { currentWeek: true, semester: true, tahunAkademik: true },
+  });
   const week = kalender?.currentWeek ?? 1;
 
   const [mentorCount, pjCount, kelompokCount, praktikanCount, kelompokAktif, activity] = await Promise.all([
@@ -30,8 +33,15 @@ async function AdminDashboard({ name }: { name: string }) {
     prisma.user.count({ where: { role: "PJ", active: true } }),
     prisma.kelompok.count(),
     prisma.praktikan.count(),
-    prisma.kelompok.findMany({ where: { OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] }, include: { pertemuan: { where: { week } } } }),
-    prisma.activityLog.findMany({ include: { user: true }, orderBy: { at: "desc" }, take: 5 }),
+    prisma.kelompok.findMany({
+      where: { OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
+      select: { pertemuan: { where: { week }, select: { status: true, date: true, time: true } } },
+    }),
+    prisma.activityLog.findMany({
+      select: { id: true, text: true, at: true },
+      orderBy: { at: "desc" },
+      take: 5,
+    }),
   ]);
 
   const statuses = kelompokAktif.map((k) => statusForPertemuan(k.pertemuan[0] ?? null));
@@ -106,12 +116,20 @@ async function AdminDashboard({ name }: { name: string }) {
 
 /* ----------------------------------- PJ ------------------------------------ */
 async function PJDashboard({ faculty, name }: { faculty?: string; name: string }) {
-  const kalender = await prisma.kalenderPraktikum.findUnique({ where: { id: "singleton" } });
+  const kalender = await prisma.kalenderPraktikum.findUnique({
+    where: { id: "singleton" },
+    select: { currentWeek: true, semester: true, tahunAkademik: true },
+  });
   const week = kalender?.currentWeek ?? 1;
 
   const kelompok = await prisma.kelompok.findMany({
     where: { faculty, OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
-    include: { mentor: true, mentorAssignments: { include: { mentor: true } }, pertemuan: { where: { week } } },
+    select: {
+      id: true, name: true,
+      mentor: { select: { name: true } },
+      mentorAssignments: { select: { mentor: { select: { name: true } } } },
+      pertemuan: { where: { week }, select: { status: true, date: true, time: true } },
+    },
   });
 
   const rows = kelompok.map((k) => ({
@@ -156,12 +174,24 @@ async function PJDashboard({ faculty, name }: { faculty?: string; name: string }
 
 /* --------------------------------- MENTOR ----------------------------------- */
 async function MentorDashboard({ userId, name }: { userId: string; name: string }) {
-  const kalender = await prisma.kalenderPraktikum.findUnique({ where: { id: "singleton" } });
+  const kalender = await prisma.kalenderPraktikum.findUnique({
+    where: { id: "singleton" },
+    select: { currentWeek: true, semester: true, tahunAkademik: true },
+  });
   const week = kalender?.currentWeek ?? 1;
 
   const [kelompokList, materiMinggu] = await Promise.all([
-    prisma.kelompok.findMany({ where: { OR: [{ mentorId: userId }, { mentorAssignments: { some: { mentorId: userId } } }] }, include: { pertemuan: { orderBy: { week: "desc" } } } }),
-    prisma.materi.findUnique({ where: { week } }),
+    prisma.kelompok.findMany({
+      where: { OR: [{ mentorId: userId }, { mentorAssignments: { some: { mentorId: userId } } }] },
+      select: {
+        name: true,
+        pertemuan: {
+          orderBy: { week: "desc" },
+          select: { id: true, week: true, date: true, time: true, location: true, status: true },
+        },
+      },
+    }),
+    prisma.materi.findUnique({ where: { week }, select: { tahsin: true, keislaman: true } }),
   ]);
 
   if (!kelompokList.length) {

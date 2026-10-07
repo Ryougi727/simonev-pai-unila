@@ -11,12 +11,16 @@ export default async function AdminUsersPage() {
   const user = session?.user as any;
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
-  const [mentors, pjs] = await Promise.all([
-    prisma.user.findMany({ where: { role: "MENTOR" }, orderBy: { name: "asc" } }),
-    prisma.user.findMany({ where: { role: "PJ" }, orderBy: { name: "asc" } }),
-  ]);
+  const users = await prisma.user.findMany({
+    where: { role: { in: ["MENTOR", "PJ"] } },
+    select: {
+      id: true, role: true, name: true, username: true, faculty: true, email: true,
+      active: true, mustChangePassword: true,
+    },
+    orderBy: { name: "asc" },
+  });
 
-  const shape = (u: (typeof mentors)[number]) => ({
+  const shape = (u: (typeof users)[number]) => ({
     id: u.id, name: u.name, username: u.username, faculty: u.faculty, email: u.email,
     active: u.active, mustChangePassword: u.mustChangePassword,
   });
@@ -24,7 +28,7 @@ export default async function AdminUsersPage() {
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold mb-4">Manajemen Pengguna</h1>
-      <UsersClient mentors={mentors.map(shape)} pjs={pjs.map(shape)} />
+      <UsersClient mentors={users.filter((u) => u.role === "MENTOR").map(shape)} pjs={users.filter((u) => u.role === "PJ").map(shape)} />
     </div>
   );
 }

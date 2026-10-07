@@ -87,8 +87,8 @@ export function Sidebar({
     <>
       {mobileOpen && <div className="fixed inset-0 bg-black/50 z-40 sm:hidden" onClick={onCloseMobile} />}
       <aside
-        className={`${mobileOpen ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} sm:flex sm:relative sm:z-auto
-          shrink-0 border-r border-outline-variant/40 bg-surface-container-low min-h-screen flex-col transition-all duration-300
+        className={`${mobileOpen ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} sm:flex sm:sticky sm:top-0 sm:z-auto
+          h-screen shrink-0 overflow-hidden border-r border-outline-variant/40 bg-surface-container-low flex-col transition-all duration-300
           ${isOpen ? "w-[260px]" : "w-[84px]"}`}
       >
         <div className="h-16 flex items-center px-4 gap-2.5 shrink-0 justify-between">
@@ -101,7 +101,7 @@ export function Sidebar({
           </button>
           <button onClick={onCloseMobile} className="sm:hidden text-on-surface-variant shrink-0"><X size={18} /></button>
         </div>
-        <nav className="flex-1 overflow-y-auto py-3 px-3">
+        <nav className="min-h-0 flex-1 overflow-y-auto py-3 px-3">
           {ungrouped.map(renderItem)}
           {groups.map((g) => (
             <div key={g}>

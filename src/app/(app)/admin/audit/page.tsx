@@ -11,7 +11,10 @@ export default async function AuditLogPage() {
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
   const logs = await prisma.auditLog.findMany({
-    include: { user: true },
+    select: {
+      id: true, at: true, entity: true, action: true, detail: true,
+      user: { select: { name: true } },
+    },
     orderBy: { at: "desc" },
     take: 200,
   });

@@ -13,11 +13,23 @@ export default async function AdminKelompokPage() {
 
   const [kelompok, mentors, praktikan] = await Promise.all([
     prisma.kelompok.findMany({
-      include: { mentor: true, mentorAssignments: { include: { mentor: true } }, _count: { select: { praktikan: true } } },
+      select: {
+        id: true, name: true, faculty: true, mentorId: true,
+        mentor: { select: { name: true } },
+        mentorAssignments: { select: { mentorId: true, mentor: { select: { name: true } } } },
+        _count: { select: { praktikan: true } },
+      },
       orderBy: { name: "asc" },
     }),
-    prisma.user.findMany({ where: { role: "MENTOR", active: true }, orderBy: { name: "asc" } }),
-    prisma.praktikan.findMany({ orderBy: { name: "asc" } }),
+    prisma.user.findMany({
+      where: { role: "MENTOR", active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.praktikan.findMany({
+      select: { id: true, npm: true, name: true, kelompokId: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   return (

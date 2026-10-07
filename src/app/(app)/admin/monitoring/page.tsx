@@ -13,13 +13,21 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
   const user = session?.user as any;
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
-  const kalender = await prisma.kalenderPraktikum.findUnique({ where: { id: "singleton" } });
+  const kalender = await prisma.kalenderPraktikum.findUnique({
+    where: { id: "singleton" },
+    select: { totalMinggu: true, currentWeek: true },
+  });
   const totalMinggu = kalender?.totalMinggu ?? 8;
   const week = Math.min(totalMinggu, Math.max(1, Number(searchParams.week) || kalender?.currentWeek || 1));
 
   const kelompok = await prisma.kelompok.findMany({
     where: { OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
-    include: { mentor: true, mentorAssignments: { include: { mentor: true } }, pertemuan: { where: { week } } },
+    select: {
+      id: true, name: true, faculty: true,
+      mentor: { select: { name: true } },
+      mentorAssignments: { select: { mentor: { select: { name: true } } } },
+      pertemuan: { where: { week }, select: { status: true, date: true, time: true } },
+    },
     orderBy: { name: "asc" },
   });
 

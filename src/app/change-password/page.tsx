@@ -28,7 +28,6 @@ export default function ChangePasswordPage() {
     if (!res.ok) { setError("Gagal menyimpan password. Coba lagi."); return; }
     await update({ mustChangePassword: false });
     router.push("/dashboard");
-    router.refresh();
   };
 
   return (

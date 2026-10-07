@@ -13,7 +13,10 @@ export async function GET(req: Request) {
 
   const pertemuan = await prisma.pertemuan.findUnique({
     where: { id: pertemuanId },
-    include: { absensi: true },
+    select: {
+      status: true, qrToken: true, qrActivatedAt: true, qrDurationMin: true,
+      absensi: { select: { praktikanId: true, status: true } },
+    },
   });
   if (!pertemuan) return NextResponse.json({ error: "Tidak ditemukan." }, { status: 404 });
 

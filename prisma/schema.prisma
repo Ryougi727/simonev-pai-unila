@@ -48,6 +48,8 @@ model User {
   auditLogs        AuditLog[]
   pengumuman       Pengumuman[]
   berita           Berita[]
+
+  @@index([role, name])
 }
 
 model Kelompok {
@@ -60,6 +62,8 @@ model Kelompok {
   praktikan Praktikan[]
   pertemuan Pertemuan[]
   createdAt DateTime    @default(now())
+
+  @@index([mentorId])
 }
 
 model KelompokMentor {
@@ -82,6 +86,8 @@ model Praktikan {
   kelompokId String?
   kelompok   Kelompok? @relation(fields: [kelompokId], references: [id], onDelete: SetNull)
   absensi    Absensi[]
+
+  @@index([kelompokId])
 }
 
 model KalenderPraktikum {
@@ -153,6 +159,8 @@ model Dokumentasi {
   pertemuan   Pertemuan @relation(fields: [pertemuanId], references: [id], onDelete: Cascade)
   url         String
   uploadedAt  DateTime  @default(now())
+
+  @@index([pertemuanId])
 }
 
 model Settings {

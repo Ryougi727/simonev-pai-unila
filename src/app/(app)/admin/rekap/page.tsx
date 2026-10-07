@@ -16,11 +16,19 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
 
   const mode: Mode = (["kelompok", "mentor", "fakultas"] as const).includes(searchParams.mode as Mode) ? (searchParams.mode as Mode) : "kelompok";
 
-  const kalender = await prisma.kalenderPraktikum.findUnique({ where: { id: "singleton" } });
+  const kalender = await prisma.kalenderPraktikum.findUnique({
+    where: { id: "singleton" },
+    select: { totalMinggu: true },
+  });
   const totalMinggu = kalender?.totalMinggu ?? 8;
 
   const kelompokList = await prisma.kelompok.findMany({
-    include: { mentor: true, mentorAssignments: { include: { mentor: true } }, pertemuan: { where: { status: "SELESAI" } } },
+    select: {
+      id: true, name: true, faculty: true,
+      mentor: { select: { id: true, name: true } },
+      mentorAssignments: { select: { mentor: { select: { id: true, name: true } } } },
+      pertemuan: { where: { status: "SELESAI" }, select: { id: true } },
+    },
     orderBy: { name: "asc" },
   });
 

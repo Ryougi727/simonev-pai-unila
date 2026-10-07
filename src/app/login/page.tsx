@@ -24,7 +24,6 @@ export default function LoginPage() {
     setLoading(false);
     if (res?.error) { setError("Username atau password salah."); return; }
     router.push("/dashboard");
-    router.refresh();
   };
 
   return (

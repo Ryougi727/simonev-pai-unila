@@ -14,9 +14,14 @@ export default async function QRAbsensiPage() {
 
   const kelompokList = await prisma.kelompok.findMany({
     where: { OR: [{ mentorId: user.id }, { mentorAssignments: { some: { mentorId: user.id } } }] },
-    include: {
-      praktikan: true,
-      pertemuan: { where: { OR: [{ week: currentWeek }, { unlockedAt: { not: null } }], status: { not: "SELESAI" } } },
+    select: {
+      id: true,
+      name: true,
+      praktikan: { select: { id: true, npm: true, name: true } },
+      pertemuan: {
+        where: { OR: [{ week: currentWeek }, { unlockedAt: { not: null } }], status: { not: "SELESAI" } },
+        select: { id: true, week: true, status: true, qrToken: true, qrActivatedAt: true, qrDurationMin: true },
+      },
     },
   });
 
