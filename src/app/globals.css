@@ -172,13 +172,18 @@
   color: rgb(var(--on-surface-variant));
 }
 
-html.sakura,
-html.neon {
+html.sakura {
   color-scheme: light;
 }
 
+html.dark,
 html.neon {
   color-scheme: dark;
+}
+
+option {
+  background-color: rgb(var(--surface-container));
+  color: rgb(var(--on-surface));
 }
 
 body {
@@ -210,6 +215,31 @@ body {
 .neon .shadow-lg,
 .neon .shadow-xl {
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45), 0 0 28px rgba(168, 85, 247, 0.08);
+}
+
+.neon .neon-glitch {
+  position: relative;
+  display: inline-block;
+  text-shadow: 0 0 12px rgba(168, 85, 247, 0.45);
+}
+
+.neon .neon-glitch::before,
+.neon .neon-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.neon .neon-glitch::before {
+  color: #22d3ee;
+  animation: neon-glitch-cyan 3.2s steps(1, end) infinite;
+}
+
+.neon .neon-glitch::after {
+  color: #f0abfc;
+  animation: neon-glitch-purple 2.8s steps(1, end) infinite;
 }
 
 .sakura .dashboard-hero-image {
@@ -301,9 +331,29 @@ body {
   100% { transform: translate3d(-42px, 115vh, 0) rotate(8deg); opacity: 0; }
 }
 
+@keyframes neon-glitch-cyan {
+  0%, 88%, 92%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); opacity: 0; }
+  89% { clip-path: inset(12% 0 62% 0); transform: translate(-2px, 1px); opacity: 0.85; }
+  90% { clip-path: inset(55% 0 19% 0); transform: translate(2px, -1px); opacity: 0.85; }
+  91% { clip-path: inset(30% 0 42% 0); transform: translate(-1px, 0); opacity: 0.8; }
+}
+
+@keyframes neon-glitch-purple {
+  0%, 82%, 86%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); opacity: 0; }
+  83% { clip-path: inset(64% 0 8% 0); transform: translate(2px, 1px); opacity: 0.8; }
+  84% { clip-path: inset(18% 0 56% 0); transform: translate(-2px, -1px); opacity: 0.8; }
+  85% { clip-path: inset(43% 0 33% 0); transform: translate(1px, 0); opacity: 0.75; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sakura .sakura-petal,
   .neon .neon-laser {
+    animation: none;
+    display: none;
+  }
+
+  .neon .neon-glitch::before,
+  .neon .neon-glitch::after {
     animation: none;
     display: none;
   }

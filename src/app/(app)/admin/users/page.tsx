@@ -16,6 +16,8 @@ export default async function AdminUsersPage() {
     select: {
       id: true, role: true, name: true, username: true, faculty: true, email: true,
       active: true, mustChangePassword: true,
+      kelompokAssignments: { select: { kelompok: { select: { faculty: true } } } },
+      kelompokMentored: { select: { faculty: true } },
     },
     orderBy: { name: "asc" },
   });
@@ -23,6 +25,10 @@ export default async function AdminUsersPage() {
   const shape = (u: (typeof users)[number]) => ({
     id: u.id, name: u.name, username: u.username, faculty: u.faculty, email: u.email,
     active: u.active, mustChangePassword: u.mustChangePassword,
+    mentoredFaculties: Array.from(new Set([
+      ...u.kelompokAssignments.map((assignment) => assignment.kelompok.faculty),
+      ...u.kelompokMentored.map((kelompok) => kelompok.faculty),
+    ])).sort((a, b) => a.localeCompare(b, "id")),
   });
 
   return (

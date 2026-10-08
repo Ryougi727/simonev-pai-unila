@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { Plus, Upload, Trash2, X, FileSpreadsheet } from "lucide-react";
+import { Plus, Upload, Trash2, X, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
 
 type PraktikanRow = {
   id: string; npm: string; name: string; fakultas: string; jurusan: string; prodi: string;
@@ -22,10 +22,25 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   const refresh = () => router.refresh();
 
   const [filterK, setFilterK] = useState("all");
-  const list =
-    filterK === "all" ? praktikan :
-    filterK === "none" ? praktikan.filter((p) => !p.kelompokId) :
-    praktikan.filter((p) => p.kelompokId === filterK);
+  const [filterFakultas, setFilterFakultas] = useState("all");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const fakultasFilterOptions = [
+    ...FAKULTAS_OPTIONS,
+    ...Array.from(new Set(praktikan.map((p) => p.fakultas)))
+      .filter((fakultas) => !FAKULTAS_OPTIONS.includes(fakultas))
+      .sort((a, b) => a.localeCompare(b, "id")),
+  ];
+  const fakultasList = filterFakultas === "all"
+    ? praktikan
+    : praktikan.filter((p) => p.fakultas === filterFakultas);
+  const groupFilteredList =
+    filterK === "all" ? fakultasList :
+    filterK === "none" ? fakultasList.filter((p) => !p.kelompokId) :
+    fakultasList.filter((p) => p.kelompokId === filterK);
+  const totalPages = Math.max(1, Math.ceil(groupFilteredList.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = groupFilteredList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ npm: "", name: "", fakultas: DEFAULT_FAKULTAS, jurusan: "", prodi: "", kelompokId: "" });
@@ -120,11 +135,27 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <select value={filterK} onChange={(e) => setFilterK(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56">
-          <option value="all">Semua Kelompok</option>
-          <option value="none">Belum Berkelompok</option>
-          {kelompok.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={filterFakultas}
+            onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); }}
+            aria-label="Filter fakultas"
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
+          >
+            <option value="all">Semua Fakultas</option>
+            {fakultasFilterOptions.map((fakultas) => <option key={fakultas} value={fakultas}>{fakultas}</option>)}
+          </select>
+          <select
+            value={filterK}
+            onChange={(e) => { setFilterK(e.target.value); setPage(1); }}
+            aria-label="Filter kelompok"
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
+          >
+            <option value="all">Semua Kelompok</option>
+            <option value="none">Belum Berkelompok</option>
+            {kelompok.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+          </select>
+        </div>
         <div className="flex gap-2">
           <button onClick={() => { setImportError(""); setImportRows([]); setImportOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2">
             <Upload size={14} /> Impor Excel
@@ -150,7 +181,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
             </tr>
           </thead>
           <tbody>
-            {list.map((p) => (
+            {pageRows.map((p) => (
               <tr key={p.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
                 <td className="px-4 py-2.5 whitespace-nowrap">{p.npm}</td>
                 <td className="px-4 py-2.5 font-semibold whitespace-nowrap">{p.name}</td>
@@ -167,11 +198,56 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
                 </td>
               </tr>
             ))}
-            {!list.length && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400 text-xs">Tidak ada praktikan.</td></tr>
+            {!groupFilteredList.length && (
+              <tr>
+                <td colSpan={7} className="px-4 py-10 text-center text-gray-400 text-xs">
+                  {filterFakultas !== "all" && !fakultasList.length
+                    ? `Belum ada data praktikan untuk Fakultas ${filterFakultas}.`
+                    : "Tidak ada praktikan untuk filter ini."}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#dcefe2] dark:border-[#1d3527] px-4 py-3 text-xs">
+          <div className="flex items-center gap-2 text-gray-500">
+            <label htmlFor="praktikan-page-size">Baris per halaman</label>
+            <select
+              id="praktikan-page-size"
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-2 py-1.5 text-on-surface outline-none focus:border-primary"
+            >
+              {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+            <span>
+              {groupFilteredList.length
+                ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, groupFilteredList.length)} dari ${groupFilteredList.length} praktikan`
+                : "0 praktikan"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              aria-label="Halaman sebelumnya"
+              className="flex items-center gap-1 rounded-lg border border-[#dcefe2] dark:border-[#1d3527] px-2.5 py-1.5 disabled:opacity-40"
+            >
+              <ChevronLeft size={14} /> Sebelumnya
+            </button>
+            <span className="text-gray-500">Halaman {currentPage} dari {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => setPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              aria-label="Halaman berikutnya"
+              className="flex items-center gap-1 rounded-lg border border-[#dcefe2] dark:border-[#1d3527] px-2.5 py-1.5 disabled:opacity-40"
+            >
+              Berikutnya <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
 

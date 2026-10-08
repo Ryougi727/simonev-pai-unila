@@ -52,7 +52,7 @@ async function AdminDashboard({ name }: { name: string }) {
     <div className="space-y-6">
       <Hero
         kalender={kalender}
-        title={<>Assalamu&apos;alaikum, <span className="text-primary dark:text-primary-dark">{name.split(" ")[0]}</span></>}
+        title={<>Assalamu&apos;alaikum, <span className="neon-glitch text-primary dark:text-primary-dark" data-text={name.split(" ")[0]}>{name.split(" ")[0]}</span></>}
         subtitle="Selamat datang di Sistem Informasi Monitoring dan Evaluasi PAI. Berikut ringkasan aktivitas praktikum saat ini."
         cta={{ href: "/pengumuman", label: "Buat Pengumuman", icon: Megaphone }}
       />
@@ -144,7 +144,7 @@ async function PJDashboard({ faculty, name }: { faculty?: string; name: string }
       <Hero
         kalender={kalender}
         eyebrowPrefix={`Fakultas ${faculty} · `}
-        title={<>Assalamu&apos;alaikum, <span className="text-primary dark:text-primary-dark">{name.split(" ")[0]}</span></>}
+        title={<>Assalamu&apos;alaikum, <span className="neon-glitch text-primary dark:text-primary-dark" data-text={name.split(" ")[0]}>{name.split(" ")[0]}</span></>}
         subtitle="Pantau perkembangan mentor binaan dan sampaikan pengumuman untuk fakultas Anda."
         cta={{ href: "/pj/monitoring", label: "Lihat Monitoring", icon: Users }}
       />
@@ -198,7 +198,7 @@ async function MentorDashboard({ userId, name }: { userId: string; name: string 
     return (
       <Hero
         kalender={kalender}
-        title={<>Assalamu&apos;alaikum, <span className="text-primary dark:text-primary-dark">{name.split(" ")[0]}</span></>}
+        title={<>Assalamu&apos;alaikum, <span className="neon-glitch text-primary dark:text-primary-dark" data-text={name.split(" ")[0]}>{name.split(" ")[0]}</span></>}
         subtitle="Anda belum memiliki kelompok. Hubungi Admin untuk penugasan kelompok."
       />
     );
@@ -212,7 +212,7 @@ async function MentorDashboard({ userId, name }: { userId: string; name: string 
     <div className="space-y-6">
       <Hero
         kalender={kalender}
-        title={<>Assalamu&apos;alaikum, <span className="text-primary dark:text-primary-dark">{name.split(" ")[0]}</span></>}
+        title={<>Assalamu&apos;alaikum, <span className="neon-glitch text-primary dark:text-primary-dark" data-text={name.split(" ")[0]}>{name.split(" ")[0]}</span></>}
         subtitle="Berikut jadwal dan materi praktikum Anda untuk minggu ini."
         cta={nextUp ? { href: "/mentor/qr", label: "Buka QR Absensi", icon: QrCode } : undefined}
       />

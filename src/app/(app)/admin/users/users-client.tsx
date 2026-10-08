@@ -3,11 +3,12 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { Plus, Upload, Pencil, Download, X, FileSpreadsheet, Trash2 } from "lucide-react";
+import { Plus, Upload, Pencil, Download, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 
 type UserRow = {
   id: string; name: string; username: string; faculty: string | null; email: string | null;
   active: boolean; mustChangePassword: boolean;
+  mentoredFaculties: string[];
 };
 type Role = "MENTOR" | "PJ";
 type ImportRow = { name: string; faculty: string; email: string };
@@ -18,7 +19,24 @@ const ROLE_LABEL: Record<Role, string> = { MENTOR: "Mentor", PJ: "PJ Fakultas" }
 export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow[] }) {
   const router = useRouter();
   const [tab, setTab] = useState<Role>("MENTOR");
+  const [filterFakultas, setFilterFakultas] = useState("all");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const mentorFacultyOptions = [
+    ...FACULTIES,
+    ...Array.from(new Set(mentors.flatMap((mentor) => mentor.mentoredFaculties)))
+      .filter((faculty) => !FACULTIES.includes(faculty))
+      .sort((a, b) => a.localeCompare(b, "id")),
+  ];
   const list = tab === "MENTOR" ? mentors : pjs;
+  const filteredList = tab === "MENTOR" && filterFakultas !== "all"
+    ? filterFakultas === "unassigned"
+      ? list.filter((mentor) => !mentor.mentoredFaculties.length)
+      : list.filter((mentor) => mentor.mentoredFaculties.includes(filterFakultas))
+    : list;
+  const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = filteredList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", email: "", faculty: FACULTIES[0] });
@@ -105,8 +123,8 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet([
-      { Nama: "Ahmad Zaki Mubarak", Fakultas: "FMIPA", Email: "" },
-      { Nama: "Siti Nurhaliza", Fakultas: "Teknik", Email: "" },
+      { Nama: "Ahmad Zaki Mubarak", [tab === "MENTOR" ? "Fakultas Asal" : "Fakultas"]: "FMIPA", Email: "" },
+      { Nama: "Siti Nurhaliza", [tab === "MENTOR" ? "Fakultas Asal" : "Fakultas"]: "Teknik", Email: "" },
     ]);
     XLSX.utils.book_append_sheet(wb, ws, "Data");
     XLSX.writeFile(wb, `template-${ROLE_LABEL[tab].toLowerCase().replace(" ", "-")}.xlsx`);
@@ -128,7 +146,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       const rows: ImportRow[] = raw
         .map((r) => ({
           name: norm(r, ["nama", "name"]),
-          faculty: norm(r, ["fakultas", "faculty"]),
+          faculty: norm(r, ["fakultas", "fakultas asal", "faculty"]),
           email: norm(r, ["email", "e-mail"]),
         }))
         .filter((r) => r.name);
@@ -168,12 +186,24 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex gap-2">
           {(["MENTOR", "PJ"] as Role[]).map((r) => (
-            <button key={r} onClick={() => setTab(r)} className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${
+            <button key={r} onClick={() => { setTab(r); setFilterFakultas("all"); setPage(1); }} className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${
               tab === r ? "bg-primary-soft dark:bg-primary-darkSoft border-primary text-primary-hover dark:text-primary-dark" : "border-[#dcefe2] dark:border-[#1d3527] text-gray-500"
             }`}>{ROLE_LABEL[r]}</button>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {tab === "MENTOR" && (
+            <select
+              value={filterFakultas}
+              onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); }}
+              aria-label="Filter fakultas binaan"
+              className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
+            >
+              <option value="all">Semua Fakultas Binaan</option>
+              <option value="unassigned">Belum Ditugaskan</option>
+              {mentorFacultyOptions.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
+            </select>
+          )}
           <button onClick={() => { setImportError(""); setImportRows([]); setImportOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2">
             <Upload size={14} /> Impor Excel
           </button>
@@ -185,25 +215,39 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead>
             <tr className="text-[11px] uppercase text-gray-400 text-left">
               <th className="px-4 py-2.5 font-bold">Nama</th>
               <th className="px-4 py-2.5 font-bold">Username</th>
-              <th className="px-4 py-2.5 font-bold">Fakultas</th>
+              {tab === "MENTOR" ? (
+                <>
+                  <th className="px-4 py-2.5 font-bold">Fakultas Asal</th>
+                  <th className="px-4 py-2.5 font-bold">Fakultas Binaan</th>
+                </>
+              ) : <th className="px-4 py-2.5 font-bold">Fakultas</th>}
               <th className="px-4 py-2.5 font-bold">Status</th>
               <th className="px-4 py-2.5"></th>
             </tr>
           </thead>
           <tbody>
-            {list.map((u) => (
+            {pageRows.map((u) => (
               <tr key={u.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
                 <td className="px-4 py-2.5 font-semibold">{u.name}</td>
                 <td className="px-4 py-2.5">
                   <code className="text-xs">{u.username}</code>
                   {u.mustChangePassword && <span className="ml-2 text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400 px-2 py-0.5 rounded-full">Belum login</span>}
                 </td>
-                <td className="px-4 py-2.5">{u.faculty || "-"}</td>
+                {tab === "MENTOR" ? (
+                  <>
+                    <td className="px-4 py-2.5">{u.faculty || "-"}</td>
+                    <td className="px-4 py-2.5">
+                      {u.mentoredFaculties.length
+                        ? u.mentoredFaculties.join(", ")
+                        : <span className="text-gray-400">Belum ditugaskan</span>}
+                    </td>
+                  </>
+                ) : <td className="px-4 py-2.5">{u.faculty || "-"}</td>}
                 <td className="px-4 py-2.5">
                   {u.active
                     ? <span className="text-[11px] font-bold bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark px-2.5 py-1 rounded-full">Aktif</span>
@@ -223,17 +267,64 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
                 </td>
               </tr>
             ))}
-            {!list.length && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-xs">Belum ada data {ROLE_LABEL[tab].toLowerCase()}.</td></tr>
+            {!filteredList.length && (
+              <tr>
+                <td colSpan={tab === "MENTOR" ? 6 : 5} className="px-4 py-10 text-center text-gray-400 text-xs">
+                  {tab === "MENTOR" && filterFakultas === "unassigned"
+                    ? "Tidak ada mentor yang belum ditugaskan membina kelompok."
+                    : tab === "MENTOR" && filterFakultas !== "all"
+                      ? `Belum ada mentor yang membina Fakultas ${filterFakultas}.`
+                      : `Belum ada data ${ROLE_LABEL[tab].toLowerCase()}.`}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#dcefe2] dark:border-[#1d3527] px-4 py-3 text-xs">
+          <div className="flex items-center gap-2 text-gray-500">
+            <label htmlFor="users-page-size">Baris per halaman</label>
+            <select
+              id="users-page-size"
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-2 py-1.5 text-on-surface outline-none focus:border-primary"
+            >
+              {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+            <span>
+              {filteredList.length
+                ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredList.length)} dari ${filteredList.length} ${ROLE_LABEL[tab].toLowerCase()}`
+                : `0 ${ROLE_LABEL[tab].toLowerCase()}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              aria-label="Halaman sebelumnya"
+              className="flex items-center gap-1 rounded-lg border border-[#dcefe2] dark:border-[#1d3527] px-2.5 py-1.5 disabled:opacity-40"
+            >
+              <ChevronLeft size={14} /> Sebelumnya
+            </button>
+            <span className="text-gray-500">Halaman {currentPage} dari {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => setPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              aria-label="Halaman berikutnya"
+              className="flex items-center gap-1 rounded-lg border border-[#dcefe2] dark:border-[#1d3527] px-2.5 py-1.5 disabled:opacity-40"
+            >
+              Berikutnya <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Add modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title={`Tambah ${ROLE_LABEL[tab]}`}>
-        <FormFields form={addForm} setForm={setAddForm} />
+        <FormFields form={addForm} setForm={setAddForm} facultyLabel={tab === "MENTOR" ? "Fakultas Asal" : "Fakultas"} />
         <p className="text-[11px] text-gray-400 mt-2">Username & password sementara akan dibuat otomatis setelah disimpan.</p>
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={() => setAddOpen(false)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
@@ -245,7 +336,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
 
       {/* Edit modal */}
       <Modal open={!!editUser} onClose={() => setEditUser(null)} title={`Edit ${editUser ? ROLE_LABEL[tab] : ""}`}>
-        <FormFields form={editForm} setForm={setEditForm} />
+        <FormFields form={editForm} setForm={setEditForm} facultyLabel={tab === "MENTOR" ? "Fakultas Asal" : "Fakultas"} />
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={() => setEditUser(null)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submitEdit} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
@@ -277,7 +368,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       {/* Bulk import modal */}
       <Modal open={importOpen} onClose={() => setImportOpen(false)} title={`Impor ${ROLE_LABEL[tab]} dari Excel`} width={560}>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-gray-500">File butuh kolom <b>Nama</b> (wajib), <b>Fakultas</b> &amp; <b>Email</b> (opsional).</p>
+          <p className="text-xs text-gray-500">File butuh kolom <b>Nama</b> (wajib), <b>{tab === "MENTOR" ? "Fakultas Asal" : "Fakultas"}</b> &amp; <b>Email</b> (opsional).</p>
           <button onClick={downloadTemplate} className="flex items-center gap-1 text-xs font-bold text-primary dark:text-primary-dark shrink-0">
             <FileSpreadsheet size={13} /> Unduh Template
           </button>
@@ -287,7 +378,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
         {importRows.length > 0 && (
           <div className="max-h-56 overflow-x-auto overflow-y-auto border border-[#dcefe2] dark:border-[#1d3527] rounded-lg mb-3">
             <table className="w-full min-w-[480px] text-xs">
-              <thead><tr className="text-left text-gray-400"><th className="px-2 py-1.5">Nama</th><th className="px-2 py-1.5">Fakultas</th><th className="px-2 py-1.5">Email</th></tr></thead>
+              <thead><tr className="text-left text-gray-400"><th className="px-2 py-1.5">Nama</th><th className="px-2 py-1.5">{tab === "MENTOR" ? "Fakultas Asal" : "Fakultas"}</th><th className="px-2 py-1.5">Email</th></tr></thead>
               <tbody>
                 {importRows.map((r, i) => (
                   <tr key={i} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
@@ -329,7 +420,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   );
 }
 
-function FormFields({ form, setForm }: { form: { name: string; email: string; faculty: string }; setForm: (f: any) => void }) {
+function FormFields({ form, setForm, facultyLabel }: { form: { name: string; email: string; faculty: string }; setForm: (f: any) => void; facultyLabel: string }) {
   return (
     <>
       <label className="block mb-3">
@@ -341,7 +432,7 @@ function FormFields({ form, setForm }: { form: { name: string; email: string; fa
         <input value={form.email} onChange={(e) => setForm((f: any) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary" placeholder="nama@unila.ac.id" />
       </label>
       <label className="block">
-        <div className="text-xs font-bold text-gray-500 mb-1.5">Fakultas</div>
+        <div className="text-xs font-bold text-gray-500 mb-1.5">{facultyLabel}</div>
         <select value={form.faculty} onChange={(e) => setForm((f: any) => ({ ...f, faculty: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary">
           {FACULTIES.map((f) => <option key={f} value={f}>{f}</option>)}
         </select>

@@ -4,17 +4,21 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { TablePagination } from "@/components/table-pagination";
 
 export const dynamic = "force-dynamic";
 
 type Mode = "kelompok" | "mentor" | "fakultas";
 
-export default async function AdminRekapPage({ searchParams }: { searchParams: { mode?: string } }) {
+export default async function AdminRekapPage({ searchParams }: { searchParams: { mode?: string; page?: string; pageSize?: string } }) {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
   const mode: Mode = (["kelompok", "mentor", "fakultas"] as const).includes(searchParams.mode as Mode) ? (searchParams.mode as Mode) : "kelompok";
+  const pageSizeValue = Number(searchParams.pageSize);
+  const pageSize = [10, 20, 50].includes(pageSizeValue) ? pageSizeValue : 10;
+  const requestedPage = Math.max(1, Math.floor(Number(searchParams.page) || 1));
 
   const kalender = await prisma.kalenderPraktikum.findUnique({
     where: { id: "singleton" },
@@ -56,6 +60,9 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
     }
     rows = Array.from(map.values());
   }
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div>
@@ -69,7 +76,7 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
         {([["kelompok", "Per Kelompok"], ["mentor", "Per Mentor"], ["fakultas", "Per Fakultas"]] as [Mode, string][]).map(([m, label]) => (
           <Link
             key={m}
-            href={`/admin/rekap?mode=${m}`}
+            href={`/admin/rekap?mode=${m}&pageSize=${pageSize}`}
             className={`text-xs font-bold px-3.5 py-1.5 rounded-full border ${
               mode === m ? "bg-primary-soft dark:bg-primary-darkSoft border-primary text-primary-hover dark:text-primary-dark" : "border-[#dcefe2] dark:border-[#1d3527] text-gray-500"
             }`}
@@ -90,7 +97,7 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => {
+            {pageRows.map((r, i) => {
               const pct = r.total ? Math.round((r.done / r.total) * 100) : 0;
               return (
                 <tr key={i} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
@@ -111,6 +118,14 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
           </tbody>
         </table>
         </div>
+        <TablePagination
+          basePath="/admin/rekap"
+          page={page}
+          pageSize={pageSize}
+          totalItems={rows.length}
+          query={{ mode }}
+          itemLabel={mode === "kelompok" ? "kelompok" : mode === "mentor" ? "mentor" : "fakultas"}
+        />
       </div>
       <p className="text-[11px] text-gray-400 mt-3">Rekap semester lampau akan tersedia setelah semester ini diarsipkan pada menu Arsip Semester.</p>
     </div>

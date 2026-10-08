@@ -5,10 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { statusForPertemuan } from "@/lib/status";
 import { StatusBadge } from "@/components/status-badge";
 import { WeekPicker } from "@/components/week-picker";
+import { TablePagination } from "@/components/table-pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function PJMonitoringPage({ searchParams }: { searchParams: { week?: string } }) {
+export default async function PJMonitoringPage({ searchParams }: { searchParams: { week?: string; page?: string; pageSize?: string } }) {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user || user.role !== "PJ") redirect("/dashboard");
@@ -19,6 +20,9 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
   });
   const totalMinggu = kalender?.totalMinggu ?? 8;
   const week = Math.min(totalMinggu, Math.max(1, Number(searchParams.week) || kalender?.currentWeek || 1));
+  const pageSizeValue = Number(searchParams.pageSize);
+  const pageSize = [10, 20, 50].includes(pageSizeValue) ? pageSizeValue : 10;
+  const requestedPage = Math.max(1, Math.floor(Number(searchParams.page) || 1));
 
   const kelompok = await prisma.kelompok.findMany({
     where: { faculty: user.faculty, OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
@@ -30,12 +34,15 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
     },
     orderBy: { name: "asc" },
   });
+  const totalPages = Math.max(1, Math.ceil(kelompok.length / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const pageRows = kelompok.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="font-display text-2xl font-semibold">Monitoring Mentor</h1>
-        <WeekPicker totalMinggu={totalMinggu} active={week} basePath="/pj/monitoring" />
+        <WeekPicker totalMinggu={totalMinggu} active={week} basePath="/pj/monitoring" pageSize={pageSize} />
       </div>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -49,7 +56,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
             </tr>
           </thead>
           <tbody>
-            {kelompok.map((k) => {
+            {pageRows.map((k) => {
               const rec = k.pertemuan[0];
               const status = statusForPertemuan(rec ?? null);
               return (
@@ -67,6 +74,14 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
           </tbody>
         </table>
         </div>
+        <TablePagination
+          basePath="/pj/monitoring"
+          page={page}
+          pageSize={pageSize}
+          totalItems={kelompok.length}
+          query={{ week: String(week) }}
+          itemLabel="kelompok"
+        />
       </div>
     </div>
   );

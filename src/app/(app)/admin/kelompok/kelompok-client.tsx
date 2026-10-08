@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, X, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { SearchableMultiSelect } from "@/components/searchable-multi-select";
 
 type KelompokRow = { id: string; name: string; faculty: string; mentorIds: string[]; mentorNames: string[]; praktikanCount: number };
@@ -14,6 +14,22 @@ const FACULTIES = ["FMIPA", "Teknik", "Ekonomi & Bisnis", "Hukum", "Pertanian", 
 export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: KelompokRow[]; mentors: Mentor[]; praktikan: Praktikan[] }) {
   const router = useRouter();
   const refresh = () => router.refresh();
+
+  const [filterFakultas, setFilterFakultas] = useState("all");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
+  const fakultasOptions = [
+    ...FACULTIES,
+    ...Array.from(new Set(kelompok.map((k) => k.faculty)))
+      .filter((faculty) => !FACULTIES.includes(faculty))
+      .sort((a, b) => a.localeCompare(b, "id")),
+  ];
+  const filteredKelompok = filterFakultas === "all"
+    ? kelompok
+    : kelompok.filter((k) => k.faculty === filterFakultas);
+  const totalPages = Math.max(1, Math.ceil(filteredKelompok.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = filteredKelompok.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const [modal, setModal] = useState<{ mode: "add" | "edit"; k?: KelompokRow } | null>(null);
   const [form, setForm] = useState({ name: "", faculty: FACULTIES[0], mentorIds: [] as string[], praktikanIds: [] as string[] });
@@ -95,13 +111,24 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
 
   return (
     <div>
-      <div className="flex justify-end gap-2 mb-4">
-        <button onClick={openGenerate} className="flex items-center gap-1.5 text-xs font-bold border border-primary/40 text-primary dark:text-primary-dark rounded-lg px-3 py-2">
-          <Sparkles size={14} /> Generate Kelompok
-        </button>
-        <button onClick={openAdd} className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-primary-hover text-white rounded-lg px-3 py-2">
-          <Plus size={14} /> Tambah Kelompok
-        </button>
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+        <select
+          value={filterFakultas}
+          onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); }}
+          aria-label="Filter fakultas"
+          className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
+        >
+          <option value="all">Semua Fakultas</option>
+          {fakultasOptions.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
+        </select>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button onClick={openGenerate} className="flex items-center gap-1.5 text-xs font-bold border border-primary/40 text-primary dark:text-primary-dark rounded-lg px-3 py-2">
+            <Sparkles size={14} /> Generate Kelompok
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-1.5 text-xs font-bold bg-primary hover:bg-primary-hover text-white rounded-lg px-3 py-2">
+            <Plus size={14} /> Tambah Kelompok
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
@@ -117,7 +144,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
             </tr>
           </thead>
           <tbody>
-            {kelompok.map((k) => (
+            {pageRows.map((k) => (
               <tr key={k.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
                 <td className="px-4 py-2.5 font-semibold">{k.name}</td>
                 <td className="px-4 py-2.5">{k.faculty}</td>
@@ -131,11 +158,56 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
                 </td>
               </tr>
             ))}
-            {!kelompok.length && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-xs">Belum ada kelompok.</td></tr>
+            {!filteredKelompok.length && (
+              <tr>
+                <td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-xs">
+                  {filterFakultas === "all"
+                    ? "Belum ada kelompok."
+                    : `Belum ada data kelompok untuk Fakultas ${filterFakultas}.`}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#dcefe2] dark:border-[#1d3527] px-4 py-3 text-xs">
+          <div className="flex items-center gap-2 text-gray-500">
+            <label htmlFor="kelompok-page-size">Baris per halaman</label>
+            <select
+              id="kelompok-page-size"
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-2 py-1.5 text-on-surface outline-none focus:border-primary"
+            >
+              {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+            <span>
+              {filteredKelompok.length
+                ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredKelompok.length)} dari ${filteredKelompok.length} kelompok`
+                : "0 kelompok"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              aria-label="Halaman sebelumnya"
+              className="flex items-center gap-1 rounded-lg border border-[#dcefe2] dark:border-[#1d3527] px-2.5 py-1.5 disabled:opacity-40"
+            >
+              <ChevronLeft size={14} /> Sebelumnya
+            </button>
+            <span className="text-gray-500">Halaman {currentPage} dari {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => setPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              aria-label="Halaman berikutnya"
+              className="flex items-center gap-1 rounded-lg border border-[#dcefe2] dark:border-[#1d3527] px-2.5 py-1.5 disabled:opacity-40"
+            >
+              Berikutnya <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
 
