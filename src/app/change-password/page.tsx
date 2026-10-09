@@ -9,6 +9,8 @@ import { IslamicPatternBackground } from "@/components/islamic-pattern";
 export default function ChangePasswordPage() {
   const { data: session, update } = useSession();
   const router = useRouter();
+  const sessionUser = session?.user as (NonNullable<typeof session>["user"] & { mustChangePassword?: boolean }) | undefined;
+  const mustChangePassword = Boolean(sessionUser?.mustChangePassword);
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
   const [error, setError] = useState("");
@@ -39,9 +41,13 @@ export default function ChangePasswordPage() {
           <div className="w-11 h-11 rounded-xl bg-primary/15 dark:bg-primary-dark/15 text-primary dark:text-primary-dark flex items-center justify-center mb-4">
             <ShieldCheck size={22} />
           </div>
-          <h1 className="font-display text-xl font-bold text-on-surface mb-1">Ganti Password Awal</h1>
+          <h1 className="font-display text-xl font-bold text-on-surface mb-1">
+            {mustChangePassword ? "Ganti Password Awal" : "Ganti Password"}
+          </h1>
           <p className="text-xs text-on-surface-variant mb-5">
-            Ini login pertama Anda{session?.user?.name ? ` (${session.user.name})` : ""}. Buat password baru sebelum melanjutkan.
+            {mustChangePassword
+              ? `Ini login pertama Anda${session?.user?.name ? ` (${session.user.name})` : ""}. Buat password baru sebelum melanjutkan.`
+              : "Buat password baru untuk akun Anda."}
           </p>
           <label className="block mb-4">
             <div className="text-xs font-bold text-on-surface-variant mb-1.5">Password Baru</div>
@@ -53,7 +59,7 @@ export default function ChangePasswordPage() {
           </label>
           {error && <div className="text-error text-xs font-semibold my-2">{error}</div>}
           <button type="submit" disabled={loading} className="w-full mt-4 bg-primary hover:bg-primary-hover dark:bg-primary-dark dark:hover:bg-primary-darkHover text-white dark:text-[#00391d] font-bold py-3 rounded-lg shadow-md disabled:opacity-60 transition active:scale-[0.98]">
-            {loading ? "Menyimpan…" : "Simpan & Lanjutkan"}
+            {loading ? "Menyimpan…" : mustChangePassword ? "Simpan & Lanjutkan" : "Simpan Password"}
           </button>
           <button type="button" onClick={() => signOut({ callbackUrl: "/login" })} className="w-full text-center text-xs text-on-surface-variant mt-3 hover:text-on-surface transition-colors">
             Keluar

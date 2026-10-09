@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import QRCode from "qrcode";
 import { QrCode as QrCodeIcon, RotateCcw, AlertTriangle } from "lucide-react";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type Praktikan = { id: string; npm: string; name: string };
 type AbsensiStatus = "HADIR" | "IZIN" | "SAKIT" | "TIDAK_HADIR";
@@ -27,6 +28,7 @@ export function QRClient({ items }: { items: Item[] }) {
   const [error, setError] = useState("");
   const [resetting, setResetting] = useState(false);
   const [info, setInfo] = useState("");
+  const { confirm, dialog } = useConfirmDialog();
 
   useEffect(() => {
     setQr(active.qr); setStatus(active.status); setError(""); setInfo(""); setAttendance({});
@@ -74,10 +76,14 @@ export function QRClient({ items }: { items: Item[] }) {
   };
 
   const resetPertemuan = async () => {
-    const msg = status === "SELESAI"
-      ? "Pertemuan ini sudah SELESAI (berita acara sudah terisi). Reset akan MENGHAPUS berita acara, semua data presensi, dan foto dokumentasi untuk minggu ini, lalu status kembali ke Terjadwal. Tanggal/jam/lokasi jadwal tidak berubah. Lanjutkan?"
-      : "Reset pertemuan ini? QR yang sedang aktif akan ditutup dan SEMUA data presensi yang sudah tercatat untuk minggu ini akan dihapus. Tanggal, jam, dan lokasi jadwal TIDAK berubah.";
-    if (!confirm(msg)) return;
+    const confirmed = await confirm({
+      title: status === "SELESAI" ? "Reset pertemuan yang sudah selesai?" : "Reset pertemuan ini?",
+      message: status === "SELESAI"
+        ? "Pertemuan ini sudah selesai. Reset akan menghapus berita acara, semua data presensi, dan foto dokumentasi minggu ini, lalu status kembali ke Terjadwal.\n\nTanggal, jam, dan lokasi jadwal tidak berubah."
+        : "QR yang sedang aktif akan ditutup dan semua data presensi yang sudah tercatat untuk minggu ini akan dihapus.\n\nTanggal, jam, dan lokasi jadwal tidak berubah.",
+      confirmLabel: "Reset Pertemuan",
+    });
+    if (!confirmed) return;
     setResetting(true); setError(""); setInfo("");
     const res = await fetch(`/api/mentor/pertemuan/${selectedId}/reset`, { method: "POST" });
     const data = await res.json();
@@ -207,6 +213,7 @@ export function QRClient({ items }: { items: Item[] }) {
           </div>
         </div>
       </div>
+      {dialog}
     </div>
   );
 }

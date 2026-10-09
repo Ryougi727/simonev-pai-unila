@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Pencil, X, RotateCcw } from "lucide-react";
 import { statusForPertemuan } from "@/lib/status";
 import { StatusBadge } from "@/components/status-badge";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type Pertemuan = { id: string; week: number; date: string; time: string; location: string; status: string };
 type Kelompok = { id: string; name: string; pertemuan: Pertemuan[] };
@@ -19,6 +20,7 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
   const [form, setForm] = useState({ date: "", time: "15:30", location: "" });
   const [saving, setSaving] = useState(false);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirmDialog();
 
   const openModal = (week: number, existing?: Pertemuan) => {
     setForm(existing ? { date: existing.date, time: existing.time, location: existing.location } : { date: "", time: "15:30", location: "" });
@@ -40,10 +42,14 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
   };
 
   const resetPertemuan = async (rec: Pertemuan) => {
-    const msg = rec.status === "SELESAI"
-      ? `Pertemuan minggu ${rec.week} sudah SELESAI (berita acara sudah terisi). Reset akan MENGHAPUS berita acara, semua data hadir, dan foto dokumentasi minggu ini, lalu status kembali ke Terjadwal. Tanggal/jam/lokasi TIDAK berubah. Lanjutkan?`
-      : `Reset pertemuan minggu ${rec.week}? QR yang aktif akan ditutup dan data hadir yang sudah tercatat akan dihapus. Jadwal tidak berubah.`;
-    if (!confirm(msg)) return;
+    const confirmed = await confirm({
+      title: rec.status === "SELESAI" ? `Reset pertemuan minggu ${rec.week} yang sudah selesai?` : `Reset pertemuan minggu ${rec.week}?`,
+      message: rec.status === "SELESAI"
+        ? "Reset akan menghapus berita acara, semua data presensi, dan foto dokumentasi minggu ini, lalu status kembali ke Terjadwal.\n\nTanggal, jam, dan lokasi jadwal tidak berubah."
+        : "QR yang aktif akan ditutup dan data presensi yang sudah tercatat akan dihapus.\n\nJadwal tidak berubah.",
+      confirmLabel: "Reset Pertemuan",
+    });
+    if (!confirmed) return;
     setResettingId(rec.id);
     const res = await fetch(`/api/mentor/pertemuan/${rec.id}/reset`, { method: "POST" });
     const data = await res.json();
@@ -142,6 +148,7 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
           </button>
         </div>
       </Modal>
+      {dialog}
     </div>
   );
 }

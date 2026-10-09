@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X, Upload, ImageIcon } from "lucide-react";
 import { resizeImageToBlob } from "@/lib/image";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type Photo = { id: string; url: string };
 type BeritaRow = {
@@ -15,6 +16,7 @@ const CATEGORIES = ["Berita", "Kajian", "Acara", "Pengumuman"];
 
 export function BeritaClient({ items }: { items: BeritaRow[] }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const refresh = () => router.refresh();
 
   const [modal, setModal] = useState<{ mode: "add" | "edit"; item?: BeritaRow } | null>(null);
@@ -53,7 +55,11 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
   };
   const removeExistingPhoto = async (photoId: string) => {
     if (!modal?.item) return;
-    if (!confirm("Hapus foto ini?")) return;
+    if (!await confirm({
+      title: "Hapus foto berita?",
+      message: "Foto ini akan dihapus dari berita.",
+      confirmLabel: "Hapus Foto",
+    })) return;
     const res = await fetch(`/api/admin/berita/${modal.item.id}/foto/${photoId}`, { method: "DELETE" });
     if (!res.ok) { alert("Gagal menghapus foto."); return; }
     setExistingPhotos((p) => p.filter((x) => x.id !== photoId));
@@ -89,7 +95,11 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
   };
 
   const remove = async (item: BeritaRow) => {
-    if (!confirm(`Hapus berita "${item.title}"? Foto-fotonya juga akan terhapus.`)) return;
+    if (!await confirm({
+      title: `Hapus berita "${item.title}"?`,
+      message: "Foto-foto yang terlampir pada berita ini juga akan terhapus.",
+      confirmLabel: "Hapus Berita",
+    })) return;
     const res = await fetch(`/api/admin/berita/${item.id}`, { method: "DELETE" });
     if (!res.ok) { alert("Gagal menghapus."); return; }
     refresh();
@@ -213,6 +223,7 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
           </button>
         </div>
       </Modal>
+      {dialog}
     </div>
   );
 }

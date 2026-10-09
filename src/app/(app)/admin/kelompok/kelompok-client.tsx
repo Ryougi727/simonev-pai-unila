@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { SearchableMultiSelect } from "@/components/searchable-multi-select";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type KelompokRow = { id: string; name: string; faculty: string; mentorIds: string[]; mentorNames: string[]; praktikanCount: number };
 type Mentor = { id: string; name: string };
@@ -14,6 +15,7 @@ const FACULTIES = ["FMIPA", "Teknik", "Ekonomi & Bisnis", "Hukum", "Pertanian", 
 export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: KelompokRow[]; mentors: Mentor[]; praktikan: Praktikan[] }) {
   const router = useRouter();
   const refresh = () => router.refresh();
+  const { confirm, dialog } = useConfirmDialog();
 
   const [filterFakultas, setFilterFakultas] = useState("all");
   const [pageSize, setPageSize] = useState(10);
@@ -76,7 +78,11 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
     const warn = k.praktikanCount > 0
       ? `Kelompok "${k.name}" memiliki ${k.praktikanCount} praktikan. Praktikan TIDAK akan terhapus, tapi jadi tidak berkelompok. Riwayat pertemuan kelompok ini akan terhapus. Lanjutkan?`
       : `Hapus kelompok "${k.name}"?`;
-    if (!confirm(warn)) return;
+    if (!await confirm({
+      title: `Hapus kelompok "${k.name}"?`,
+      message: warn.replace(`Hapus kelompok "${k.name}"?`, "Tindakan ini tidak dapat dibatalkan."),
+      confirmLabel: "Hapus Kelompok",
+    })) return;
     const res = await fetch(`/api/admin/kelompok/${k.id}`, { method: "DELETE" });
     if (!res.ok) { alert("Gagal menghapus."); return; }
     refresh();
@@ -318,6 +324,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
           </button>
         </div>
       </Modal>
+      {dialog}
     </div>
   );
 }

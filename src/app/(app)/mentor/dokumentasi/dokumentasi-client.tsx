@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, X } from "lucide-react";
 import { resizeImageToBlob } from "@/lib/image";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type Photo = { id: string; url: string };
 type Pertemuan = { id: string; week: number; photos: Photo[] };
@@ -11,6 +12,7 @@ type Kelompok = { id: string; name: string; pertemuan: Pertemuan[] };
 
 export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: number; kelompokList: Kelompok[] }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [activeKId, setActiveKId] = useState(kelompokList[0].id);
   const kelompok = kelompokList.find((k) => k.id === activeKId)!;
   const [activePId, setActivePId] = useState(kelompok.pertemuan[0]?.id);
@@ -47,7 +49,11 @@ export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: numb
   };
 
   const remove = async (photoId: string) => {
-    if (!confirm("Hapus foto ini?")) return;
+    if (!await confirm({
+      title: "Hapus foto dokumentasi?",
+      message: "Foto ini akan dihapus dari dokumentasi pertemuan.",
+      confirmLabel: "Hapus Foto",
+    })) return;
     const res = await fetch(`/api/mentor/dokumentasi/${photoId}`, { method: "DELETE" });
     if (!res.ok) { alert("Gagal menghapus."); return; }
     router.refresh();
@@ -58,6 +64,7 @@ export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: numb
       <div>
         {kelompokList.length > 1 && <KelompokSelect kelompokList={kelompokList} activeId={activeKId} onChange={onKelompokChange} />}
         <p className="text-sm text-gray-500 mt-3">Belum ada pertemuan terjadwal.</p>
+        {dialog}
       </div>
     );
   }
@@ -98,6 +105,7 @@ export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: numb
           )}
         </div>
       </div>
+      {dialog}
     </div>
   );
 }

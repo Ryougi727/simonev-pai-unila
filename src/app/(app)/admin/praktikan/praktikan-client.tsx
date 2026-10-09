@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { Plus, Upload, Trash2, X, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type PraktikanRow = {
   id: string; npm: string; name: string; fakultas: string; jurusan: string; prodi: string;
@@ -19,6 +20,7 @@ const FAKULTAS_OPTIONS = ["Teknik", "FMIPA", "Ekonomi & Bisnis", "Hukum", "Perta
 
 export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanRow[]; kelompok: Kelompok[] }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const refresh = () => router.refresh();
 
   const [filterK, setFilterK] = useState("all");
@@ -71,7 +73,11 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   };
 
   const remove = async (p: PraktikanRow) => {
-    if (!confirm(`Hapus praktikan "${p.name}"?`)) return;
+    if (!await confirm({
+      title: `Hapus praktikan "${p.name}"?`,
+      message: "Data praktikan akan dihapus permanen dan tidak dapat dipulihkan.",
+      confirmLabel: "Hapus Praktikan",
+    })) return;
     const res = await fetch(`/api/admin/praktikan/${p.id}`, { method: "DELETE" });
     if (!res.ok) { alert("Gagal menghapus."); return; }
     refresh();
@@ -339,6 +345,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
           </div>
         )}
       </Modal>
+      {dialog}
     </div>
   );
 }

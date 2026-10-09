@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ShieldAlert, X, AlertTriangle } from "lucide-react";
 
@@ -50,15 +51,16 @@ export function EmergencyUnlockButton({ collapsed }: { collapsed?: boolean }) {
         <ShieldAlert size={14} /> {!collapsed && "Kunci Darurat"}
       </button>
 
-      {open && (
-        <div className="fixed inset-0 bg-black/45 z-[60] flex items-center justify-center p-4" onMouseDown={() => setOpen(false)}>
-          <div className="w-full max-w-md bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl max-h-[88vh] overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#dcefe2] dark:border-[#1d3527]">
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/45 p-4" onMouseDown={() => setOpen(false)}>
+          <div className="flex min-h-full items-center justify-center">
+          <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#dcefe2] dark:border-[#1d3527]">
               <div className="font-display text-lg font-semibold">Buka Kunci Darurat</div>
               <button onClick={() => setOpen(false)} className="text-gray-400"><X size={18} /></button>
             </div>
-            <div className="p-5">
-              <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 text-xs rounded-lg px-3 py-2.5 mb-4">
+            <div className="p-4">
+              <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 text-xs rounded-lg px-3 py-2 mb-3">
                 <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                 <span>
                   Fitur ini hanya untuk pertemuan minggu lalu yang <b>lupa</b> dibuka QR/berita acaranya sebelum minggu
@@ -67,13 +69,13 @@ export function EmergencyUnlockButton({ collapsed }: { collapsed?: boolean }) {
               </div>
 
               {loading ? (
-                <p className="text-xs text-gray-400 text-center py-6">Memuat…</p>
+                <p className="text-xs text-gray-400 text-center py-4">Memuat…</p>
               ) : candidates.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-6">Tidak ada pertemuan minggu lalu yang perlu dibuka.</p>
+                <p className="text-xs text-gray-400 text-center py-4">Tidak ada pertemuan minggu lalu yang perlu dibuka.</p>
               ) : (
                 <>
                   <div className="text-xs font-bold text-gray-500 mb-1.5">Pilih Pertemuan</div>
-                  <div className="space-y-1.5 mb-4 max-h-40 overflow-y-auto">
+                  <div className="space-y-1.5 mb-3 max-h-[30dvh] overflow-y-auto">
                     {candidates.map((c) => (
                       <button
                         key={c.id}
@@ -100,7 +102,9 @@ export function EmergencyUnlockButton({ collapsed }: { collapsed?: boolean }) {
               )}
             </div>
           </div>
-        </div>
+          </div>
+        </div>,
+        document.body
       )}
     </>
   );

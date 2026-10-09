@@ -3,15 +3,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, Download, Upload, Trash2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type ArchiveRow = { id: string; label: string; archivedAt: string; totalPertemuan: number };
 
 export function ArsipClient({ semesterLabel, totalPertemuanSelesai, archives }: { semesterLabel: string; totalPertemuanSelesai: number; archives: ArchiveRow[] }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [archiving, setArchiving] = useState(false);
 
   const archiveNow = async () => {
-    if (!confirm(`Arsipkan semester ${semesterLabel} sekarang?`)) return;
+    if (!await confirm({
+      title: `Arsipkan semester ${semesterLabel}?`,
+      message: "Data semester ini akan disimpan sebagai arsip untuk keperluan riwayat dan rekapitulasi.",
+      confirmLabel: "Arsipkan Semester",
+      tone: "warning",
+    })) return;
     setArchiving(true);
     const res = await fetch("/api/admin/arsip", { method: "POST" });
     setArchiving(false);
@@ -68,6 +75,7 @@ export function ArsipClient({ semesterLabel, totalPertemuanSelesai, archives }: 
           </tbody>
         </table>
         </div>
+        {dialog}
       </div>
     </div>
   );

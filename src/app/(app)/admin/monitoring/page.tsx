@@ -6,10 +6,11 @@ import { statusForPertemuan } from "@/lib/status";
 import { StatusBadge } from "@/components/status-badge";
 import { WeekPicker } from "@/components/week-picker";
 import { TablePagination } from "@/components/table-pagination";
+import { MeetingSummary } from "@/components/meeting-summary";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminMonitoringPage({ searchParams }: { searchParams: { week?: string; page?: string; pageSize?: string } }) {
+export default async function AdminMonitoringPage({ searchParams }: { searchParams: { week?: string; page?: string; pageSize?: string; faculty?: string } }) {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
@@ -23,9 +24,13 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
   const pageSizeValue = Number(searchParams.pageSize);
   const pageSize = [10, 20, 50].includes(pageSizeValue) ? pageSizeValue : 10;
   const requestedPage = Math.max(1, Math.floor(Number(searchParams.page) || 1));
+  const faculty = searchParams.faculty || "all";
 
   const kelompok = await prisma.kelompok.findMany({
-    where: { OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
+    where: {
+      ...(faculty !== "all" ? { faculty } : {}),
+      OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }],
+    },
     select: {
       id: true, name: true, faculty: true,
       mentor: { select: { name: true } },
@@ -37,13 +42,37 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
   const totalPages = Math.max(1, Math.ceil(kelompok.length / pageSize));
   const page = Math.min(requestedPage, totalPages);
   const pageRows = kelompok.slice((page - 1) * pageSize, page * pageSize);
+  const summaryRows = kelompok.map((k) => {
+    const meeting = k.pertemuan[0] ?? null;
+    return {
+      id: k.id,
+      name: k.name,
+      mentorNames: k.mentorAssignments.length
+        ? k.mentorAssignments.map((assignment) => assignment.mentor.name)
+        : k.mentor?.name ? [k.mentor.name] : [],
+      status: statusForPertemuan(meeting),
+    };
+  });
+  const completedCount = summaryRows.filter((group) => group.status === "selesai").length;
+  const pendingGroups = summaryRows.filter(
+    (group): group is (typeof summaryRows)[number] & { status: Exclude<ReturnType<typeof statusForPertemuan>, "selesai"> } =>
+      group.status !== "selesai"
+  );
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="font-display text-2xl font-semibold">Monitoring Pelaksanaan</h1>
-        <WeekPicker totalMinggu={totalMinggu} active={week} basePath="/admin/monitoring" pageSize={pageSize} />
+        <WeekPicker
+          totalMinggu={totalMinggu}
+          active={week}
+          basePath="/admin/monitoring"
+          pageSize={pageSize}
+          faculty={faculty}
+          showFacultyFilter
+        />
       </div>
+      <MeetingSummary week={week} completedCount={completedCount} pendingGroups={pendingGroups} />
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
@@ -71,7 +100,11 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
               );
             })}
             {!kelompok.length && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-xs">Tidak ada kelompok untuk ditampilkan.</td></tr>
+              <tr>
+                <td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-xs">
+                  {faculty === "all" ? "Tidak ada kelompok untuk ditampilkan." : `Belum ada kelompok untuk Fakultas ${faculty}.`}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -81,7 +114,7 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
           page={page}
           pageSize={pageSize}
           totalItems={kelompok.length}
-          query={{ week: String(week) }}
+          query={{ week: String(week), ...(faculty !== "all" ? { faculty } : {}) }}
           itemLabel="kelompok"
         />
       </div>

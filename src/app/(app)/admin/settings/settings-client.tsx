@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type Settings = { appName: string; qrDurationMinutes: number; maxPhotos: number; defaultTheme: string; galeriSubtitle: string };
 
 export function SettingsClient({ settings, hasEmergencyPassword }: { settings: Settings; hasEmergencyPassword: boolean }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [form, setForm] = useState(settings);
   const [saving, setSaving] = useState(false);
 
@@ -23,7 +25,12 @@ export function SettingsClient({ settings, hasEmergencyPassword }: { settings: S
   const [savingEmergency, setSavingEmergency] = useState(false);
   const saveEmergency = async () => {
     if (emergencyPassword.length < 6) { alert("Sandi minimal 6 karakter."); return; }
-    if (!confirm("Ganti sandi darurat? Sandi lama (kalau ada) tidak akan bisa dipakai lagi.")) return;
+    if (!await confirm({
+      title: "Ganti sandi darurat?",
+      message: "Sandi lama, jika ada, tidak akan bisa dipakai lagi.",
+      confirmLabel: "Ganti Sandi",
+      tone: "warning",
+    })) return;
     setSavingEmergency(true);
     const res = await fetch("/api/admin/settings/emergency-password", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: emergencyPassword }),
@@ -84,6 +91,7 @@ export function SettingsClient({ settings, hasEmergencyPassword }: { settings: S
           {savingEmergency ? "Menyimpan…" : "Simpan Sandi Darurat"}
         </button>
       </div>
+      {dialog}
     </div>
   );
 }

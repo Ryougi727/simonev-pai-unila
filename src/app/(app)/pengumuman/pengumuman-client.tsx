@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Paperclip, Trash2, X, FileText } from "lucide-react";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type Item = {
   id: string; title: string; body: string; targetFaculty: string | null;
@@ -16,6 +17,7 @@ export function PengumumanClient({
   canPost: boolean; role: string; currentUserId: string; faculties: string[]; items: Item[];
 }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -49,7 +51,11 @@ export function PengumumanClient({
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Hapus pengumuman ini?")) return;
+    if (!await confirm({
+      title: "Hapus pengumuman ini?",
+      message: "Pengumuman akan dihapus permanen dan tidak dapat dipulihkan.",
+      confirmLabel: "Hapus Pengumuman",
+    })) return;
     const res = await fetch(`/api/pengumuman/${id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { alert(data.error || "Gagal menghapus."); return; }
@@ -134,6 +140,7 @@ export function PengumumanClient({
           </div>
         </Modal>
       )}
+      {dialog}
     </div>
   );
 }

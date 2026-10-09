@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { Plus, Upload, Pencil, Download, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 type UserRow = {
   id: string; name: string; username: string; faculty: string | null; email: string | null;
@@ -18,6 +19,7 @@ const ROLE_LABEL: Record<Role, string> = { MENTOR: "Mentor", PJ: "PJ Fakultas" }
 
 export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow[] }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [tab, setTab] = useState<Role>("MENTOR");
   const [filterFakultas, setFilterFakultas] = useState("all");
   const [pageSize, setPageSize] = useState(10);
@@ -102,9 +104,11 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
     refresh();
   };
   const remove = async (u: UserRow) => {
-    const ok = confirm(
-      `Hapus permanen akun "${u.name}"? Tindakan ini tidak bisa dibatalkan.\n\nKelompok yang dibina (jika ada) akan menjadi "Belum ditentukan", dan namanya akan hilang dari Activity/Audit Log (catatan lognya tetap ada, hanya tanpa nama).`
-    );
+    const ok = await confirm({
+      title: `Hapus akun "${u.name}" secara permanen?`,
+      message: `Tindakan ini tidak bisa dibatalkan.\n\nKelompok yang dibina (jika ada) akan menjadi "Belum ditentukan", dan namanya akan hilang dari Activity/Audit Log (catatan lognya tetap ada, hanya tanpa nama).`,
+      confirmLabel: "Hapus Akun",
+    });
     if (!ok) return;
     const res = await fetch(`/api/admin/${u.id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
@@ -416,6 +420,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
           </div>
         )}
       </Modal>
+      {dialog}
     </div>
   );
 }

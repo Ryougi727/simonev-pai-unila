@@ -4,11 +4,13 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, X } from "lucide-react";
 import { resizeImageToBlob } from "@/lib/image";
+import { useConfirmDialog } from "@/components/use-confirm-dialog";
 
 const MAX_GALERI = 10;
 
 export function GaleriClient({ fotos, subtitle }: { fotos: { id: string; url: string }[]; subtitle: string }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -41,7 +43,11 @@ export function GaleriClient({ fotos, subtitle }: { fotos: { id: string; url: st
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Hapus foto ini dari galeri?")) return;
+    if (!await confirm({
+      title: "Hapus foto dari galeri?",
+      message: "Foto ini akan dihapus permanen dari galeri.",
+      confirmLabel: "Hapus Foto",
+    })) return;
     const res = await fetch(`/api/admin/galeri/${id}`, { method: "DELETE" });
     if (!res.ok) { alert("Gagal menghapus."); return; }
     router.refresh();
@@ -96,6 +102,7 @@ export function GaleriClient({ fotos, subtitle }: { fotos: { id: string; url: st
         </div>
         {room <= 0 && <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-3">Galeri penuh — hapus salah satu foto untuk menambah yang baru.</p>}
       </div>
+      {dialog}
     </div>
   );
 }

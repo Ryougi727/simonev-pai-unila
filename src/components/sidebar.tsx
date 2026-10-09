@@ -111,7 +111,7 @@ export function Sidebar({
             </div>
           ))}
         </nav>
-        <div className="p-3 border-t border-outline-variant/40 space-y-2">
+        <div className="hidden sm:block p-3 border-t border-outline-variant/40 space-y-2">
           {role === "MENTOR" && <EmergencyUnlockButton collapsed={!isOpen} />}
           {isOpen && <div className="text-xs font-bold px-1 truncate text-on-surface">{name}</div>}
           <button
