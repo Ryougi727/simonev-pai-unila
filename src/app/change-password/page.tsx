@@ -51,11 +51,11 @@ export default function ChangePasswordPage() {
           </p>
           <label className="block mb-4">
             <div className="text-xs font-bold text-on-surface-variant mb-1.5">Password Baru</div>
-            <input type="password" value={pw1} onChange={(e) => setPw1(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-surface-container-low shadow-inner text-on-surface outline-none focus:ring-2 focus:ring-primary/40 dark:focus:ring-primary-dark/40 transition-all" />
+            <input type="password" name="new-password" autoComplete="new-password" value={pw1} onChange={(e) => setPw1(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-surface-container-low shadow-inner text-on-surface outline-none focus:ring-2 focus:ring-primary/40 dark:focus:ring-primary-dark/40 transition-all" />
           </label>
           <label className="block mb-2">
             <div className="text-xs font-bold text-on-surface-variant mb-1.5">Konfirmasi Password Baru</div>
-            <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-surface-container-low shadow-inner text-on-surface outline-none focus:ring-2 focus:ring-primary/40 dark:focus:ring-primary-dark/40 transition-all" />
+            <input type="password" name="confirm-new-password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} className="w-full px-3 py-2.5 rounded-lg bg-surface-container-low shadow-inner text-on-surface outline-none focus:ring-2 focus:ring-primary/40 dark:focus:ring-primary-dark/40 transition-all" />
           </label>
           {error && <div className="text-error text-xs font-semibold my-2">{error}</div>}
           <button type="submit" disabled={loading} className="w-full mt-4 bg-primary hover:bg-primary-hover dark:bg-primary-dark dark:hover:bg-primary-darkHover text-white dark:text-[#00391d] font-bold py-3 rounded-lg shadow-md disabled:opacity-60 transition active:scale-[0.98]">

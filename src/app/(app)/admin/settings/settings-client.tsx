@@ -44,37 +44,37 @@ export function SettingsClient({ settings, hasEmergencyPassword }: { settings: S
 
   return (
     <div className="space-y-5 max-w-lg">
-      <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl p-5">
+      <form autoComplete="off" onSubmit={(event) => { event.preventDefault(); void save(); }} className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl p-5">
         <label className="block mb-3">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Nama Aplikasi</div>
-          <input value={form.appName} onChange={(e) => setForm((f) => ({ ...f, appName: e.target.value }))} className={inputCls} />
+          <input type="text" name="application-name" autoComplete="off" value={form.appName} onChange={(e) => setForm((f) => ({ ...f, appName: e.target.value }))} className={inputCls} />
         </label>
         <label className="block mb-3">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Durasi QR Absensi (menit)</div>
-          <input type="number" min={1} max={60} value={form.qrDurationMinutes} onChange={(e) => setForm((f) => ({ ...f, qrDurationMinutes: Number(e.target.value) }))} className={inputCls} />
+          <input type="number" name="qr-duration-minutes" autoComplete="off" min={1} max={60} value={form.qrDurationMinutes} onChange={(e) => setForm((f) => ({ ...f, qrDurationMinutes: Number(e.target.value) }))} className={inputCls} />
           <div className="text-[11px] text-gray-400 mt-1">QR akan otomatis nonaktif setelah durasi ini berakhir.</div>
         </label>
         <label className="block mb-3">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Maksimal Foto Dokumentasi per Pertemuan</div>
-          <input type="number" min={1} max={10} value={form.maxPhotos} onChange={(e) => setForm((f) => ({ ...f, maxPhotos: Number(e.target.value) }))} className={inputCls} />
+          <input type="number" name="maximum-documentation-photos" autoComplete="off" min={1} max={10} value={form.maxPhotos} onChange={(e) => setForm((f) => ({ ...f, maxPhotos: Number(e.target.value) }))} className={inputCls} />
         </label>
         <label className="block mb-3">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Tema Default untuk Pengguna Baru</div>
-          <select value={form.defaultTheme} onChange={(e) => setForm((f) => ({ ...f, defaultTheme: e.target.value }))} className={inputCls}>
+          <select name="default-theme" autoComplete="off" value={form.defaultTheme} onChange={(e) => setForm((f) => ({ ...f, defaultTheme: e.target.value }))} className={inputCls}>
             <option value="light">Terang (Hijau & Putih)</option>
             <option value="dark">Gelap</option>
           </select>
         </label>
         <label className="block mb-4">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Sub-judul Galeri di Halaman Depan</div>
-          <input value={form.galeriSubtitle} onChange={(e) => setForm((f) => ({ ...f, galeriSubtitle: e.target.value }))} className={inputCls} placeholder="cth. Pertemuan Perdana Kelompok" />
+          <input type="text" name="gallery-subtitle" autoComplete="off" value={form.galeriSubtitle} onChange={(e) => setForm((f) => ({ ...f, galeriSubtitle: e.target.value }))} className={inputCls} placeholder="cth. Pertemuan Perdana Kelompok" />
         </label>
-        <button onClick={save} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2.5">
+        <button type="submit" disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2.5">
           {saving ? "Menyimpan…" : "Simpan Pengaturan"}
         </button>
-      </div>
+      </form>
 
-      <div className="bg-white dark:bg-[#0f1c14] border border-amber-200 dark:border-amber-900 rounded-2xl p-5">
+      <form autoComplete="off" onSubmit={(event) => { event.preventDefault(); void saveEmergency(); }} className="bg-white dark:bg-[#0f1c14] border border-amber-200 dark:border-amber-900 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-1.5">
           <ShieldAlert size={16} className="text-amber-600 dark:text-amber-400" />
           <div className="font-bold text-sm">Sandi Darurat</div>
@@ -85,12 +85,12 @@ export function SettingsClient({ settings, hasEmergencyPassword }: { settings: S
         </p>
         <label className="block mb-3">
           <div className="text-xs font-bold text-gray-500 mb-1.5">{hasEmergencyPassword ? "Ganti Sandi Darurat" : "Atur Sandi Darurat"}</div>
-          <input type="password" value={emergencyPassword} onChange={(e) => setEmergencyPassword(e.target.value)} className={inputCls} placeholder="Minimal 6 karakter" />
+          <input type="password" name="emergency-password" autoComplete="new-password" value={emergencyPassword} onChange={(e) => setEmergencyPassword(e.target.value)} className={inputCls} placeholder="Minimal 6 karakter" />
         </label>
-        <button onClick={saveEmergency} disabled={savingEmergency} className="text-sm font-semibold bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg px-4 py-2.5">
+        <button type="submit" disabled={savingEmergency} className="text-sm font-semibold bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg px-4 py-2.5">
           {savingEmergency ? "Menyimpan…" : "Simpan Sandi Darurat"}
         </button>
-      </div>
+      </form>
       {dialog}
     </div>
   );

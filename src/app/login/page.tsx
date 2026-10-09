@@ -58,6 +58,8 @@ export default function LoginPage() {
                 <User size={18} className="absolute left-3 text-on-surface-variant/70" />
                 <input
                   id="username"
+                  name="username"
+                  autoComplete="username"
                   autoFocus
                   value={username}
                   onChange={(e) => { setUsername(e.target.value); setError(""); }}
@@ -73,7 +75,9 @@ export default function LoginPage() {
                 <Lock size={18} className="absolute left-3 text-on-surface-variant/70" />
                 <input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(""); }}
                   className="w-full bg-transparent text-on-surface py-3 pl-10 pr-10 outline-none placeholder:text-on-surface-variant/40"

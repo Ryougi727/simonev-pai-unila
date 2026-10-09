@@ -73,6 +73,9 @@ export function Topbar({
       <div ref={boxRef} className="hidden sm:flex items-center flex-1 max-w-md relative">
         <Search size={16} className="absolute left-3.5 text-on-surface-variant pointer-events-none" />
         <input
+          type="search"
+          name="global-search"
+          autoComplete="off"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setShowResults(true); }}
           onFocus={() => setShowResults(true)}
