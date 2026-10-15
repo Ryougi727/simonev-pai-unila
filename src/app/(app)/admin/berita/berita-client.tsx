@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X, Upload, ImageIcon } from "lucide-react";
 import { resizeImageToBlob } from "@/lib/image";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Photo = { id: string; url: string };
 type BeritaRow = {
@@ -25,6 +26,7 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [newPreviews, setNewPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [busyAction, setBusyAction] = useState<{ id: string; action: "delete" | "publish" | "photo" } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const openAdd = () => {
@@ -60,10 +62,17 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
       message: "Foto ini akan dihapus dari berita.",
       confirmLabel: "Hapus Foto",
     })) return;
-    const res = await fetch(`/api/admin/berita/${modal.item.id}/foto/${photoId}`, { method: "DELETE" });
-    if (!res.ok) { alert("Gagal menghapus foto."); return; }
-    setExistingPhotos((p) => p.filter((x) => x.id !== photoId));
-    refresh();
+    setBusyAction({ id: photoId, action: "photo" });
+    try {
+      const res = await fetch(`/api/admin/berita/${modal.item.id}/foto/${photoId}`, { method: "DELETE" });
+      if (!res.ok) { alert("Gagal menghapus foto."); return; }
+      setExistingPhotos((p) => p.filter((x) => x.id !== photoId));
+      refresh();
+    } catch {
+      alert("Gagal menghapus foto. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   const submit = async () => {
@@ -100,9 +109,16 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
       message: "Foto-foto yang terlampir pada berita ini juga akan terhapus.",
       confirmLabel: "Hapus Berita",
     })) return;
-    const res = await fetch(`/api/admin/berita/${item.id}`, { method: "DELETE" });
-    if (!res.ok) { alert("Gagal menghapus."); return; }
-    refresh();
+    setBusyAction({ id: item.id, action: "delete" });
+    try {
+      const res = await fetch(`/api/admin/berita/${item.id}`, { method: "DELETE" });
+      if (!res.ok) { alert("Gagal menghapus."); return; }
+      refresh();
+    } catch {
+      alert("Gagal menghapus berita. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   const togglePublish = async (item: BeritaRow) => {
@@ -113,9 +129,16 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
     fd.append("category", item.category);
     fd.append("eventDate", item.eventDate);
     fd.append("published", String(!item.published));
-    const res = await fetch(`/api/admin/berita/${item.id}`, { method: "PATCH", body: fd });
-    if (!res.ok) { alert("Gagal mengubah status."); return; }
-    refresh();
+    setBusyAction({ id: item.id, action: "publish" });
+    try {
+      const res = await fetch(`/api/admin/berita/${item.id}`, { method: "PATCH", body: fd });
+      if (!res.ok) { alert("Gagal mengubah status."); return; }
+      refresh();
+    } catch {
+      alert("Gagal mengubah status berita. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   return (
@@ -148,8 +171,13 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
             </div>
             <div className="flex flex-col gap-1.5 shrink-0">
               <button onClick={() => openEdit(item)} className="text-xs font-semibold flex items-center gap-1 text-gray-500 px-2 py-1"><Pencil size={12} /> Edit</button>
-              <button onClick={() => togglePublish(item)} className="text-xs font-semibold text-gray-500 px-2 py-1">{item.published ? "Jadikan Draft" : "Terbitkan"}</button>
-              <button onClick={() => remove(item)} className="text-xs font-semibold flex items-center gap-1 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-lg"><Trash2 size={12} /> Hapus</button>
+              <button onClick={() => togglePublish(item)} disabled={busyAction?.id === item.id} className="text-xs font-semibold flex items-center gap-1 text-gray-500 px-2 py-1 disabled:opacity-60">
+                {busyAction?.id === item.id && busyAction.action === "publish" && <ActionSpinner />}
+                {item.published ? "Jadikan Draft" : "Terbitkan"}
+              </button>
+              <button onClick={() => remove(item)} disabled={busyAction?.id === item.id} className="text-xs font-semibold flex items-center gap-1 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-lg disabled:opacity-60">
+                {busyAction?.id === item.id && busyAction.action === "delete" ? <ActionSpinner /> : <Trash2 size={12} />} {busyAction?.id === item.id && busyAction.action === "delete" ? "Menghapus…" : "Hapus"}
+              </button>
             </div>
           </div>
         ))}
@@ -193,7 +221,9 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
               <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden border border-[#dcefe2] dark:border-[#1d3527]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.url} alt="" className="w-full h-full object-cover" />
-                <button onClick={() => removeExistingPhoto(p.id)} className="absolute top-1 right-1 bg-black/55 rounded-full w-5 h-5 flex items-center justify-center text-white"><X size={11} /></button>
+                <button onClick={() => removeExistingPhoto(p.id)} disabled={busyAction?.id === p.id} className="absolute top-1 right-1 bg-black/55 rounded-full w-5 h-5 flex items-center justify-center text-white disabled:opacity-60">
+                  {busyAction?.id === p.id ? <ActionSpinner /> : <X size={11} />}
+                </button>
               </div>
             ))}
             {newPreviews.map((src, i) => (
@@ -219,7 +249,7 @@ export function BeritaClient({ items }: { items: BeritaRow[] }) {
         <div className="flex justify-end gap-2">
           <button onClick={() => setModal(null)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submit} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-            {saving ? "Menyimpan…" : "Simpan"}
+            {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan"}
           </button>
         </div>
       </Modal>

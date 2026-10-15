@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { SessionProvider } from "@/components/session-provider";
+import { RouteProgress } from "@/components/route-progress";
+import { DataLoadingProvider } from "@/components/data-loading";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             enableSystem={false}
             themes={["light", "dark", "sakura", "neon"]}
           >
-            {children}
+            <>
+              <RouteProgress />
+              <DataLoadingProvider>{children}</DataLoadingProvider>
+            </>
           </ThemeProvider>
         </SessionProvider>
       </body>

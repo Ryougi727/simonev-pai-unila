@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { Plus, Upload, Trash2, X, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type PraktikanRow = {
   id: string; npm: string; name: string; fakultas: string; jurusan: string; prodi: string;
@@ -47,6 +48,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ npm: "", name: "", fakultas: DEFAULT_FAKULTAS, jurusan: "", prodi: "", kelompokId: "" });
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [importOpen, setImportOpen] = useState(false);
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
@@ -78,9 +80,16 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
       message: "Data praktikan akan dihapus permanen dan tidak dapat dipulihkan.",
       confirmLabel: "Hapus Praktikan",
     })) return;
-    const res = await fetch(`/api/admin/praktikan/${p.id}`, { method: "DELETE" });
-    if (!res.ok) { alert("Gagal menghapus."); return; }
-    refresh();
+    setDeletingId(p.id);
+    try {
+      const res = await fetch(`/api/admin/praktikan/${p.id}`, { method: "DELETE" });
+      if (!res.ok) { alert("Gagal menghapus."); return; }
+      refresh();
+    } catch {
+      alert("Gagal menghapus praktikan. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const downloadTemplate = () => {
@@ -199,7 +208,9 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
                 </td>
                 <td className="px-4 py-2.5">
                   <div className="flex justify-end">
-                    <button onClick={() => remove(p)} className="text-xs font-semibold flex items-center gap-1 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-lg"><Trash2 size={12} /> Hapus</button>
+                    <button onClick={() => remove(p)} disabled={deletingId === p.id} className="text-xs font-semibold flex items-center gap-1 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-lg disabled:opacity-60">
+                      {deletingId === p.id ? <><ActionSpinner /> Menghapus…</> : <><Trash2 size={12} /> Hapus</>}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -292,7 +303,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={() => setAddOpen(false)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submitAdd} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-            {saving ? "Menyimpan…" : "Simpan"}
+            {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan"}
           </button>
         </div>
       </Modal>
@@ -325,7 +336,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
         <div className="flex justify-end gap-2">
           <button onClick={() => setImportOpen(false)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submitImport} disabled={!importRows.length || importing} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-50 text-white rounded-lg px-4 py-2">
-            {importing ? "Mengimpor…" : `Impor ${importRows.length || ""} Praktikan`}
+            {importing ? <><ActionSpinner /> Mengimpor…</> : `Impor ${importRows.length || ""} Praktikan`}
           </button>
         </div>
       </Modal>

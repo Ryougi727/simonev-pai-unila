@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { Plus, Upload, Pencil, Download, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type UserRow = {
   id: string; name: string; username: string; faculty: string | null; email: string | null;
@@ -43,6 +44,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", email: "", faculty: FACULTIES[0] });
   const [saving, setSaving] = useState(false);
+  const [busyAction, setBusyAction] = useState<{ id: string; action: "toggle" | "delete" } | null>(null);
 
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [editForm, setEditForm] = useState({ name: "", email: "", faculty: FACULTIES[0] });
@@ -99,9 +101,16 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
     refresh();
   };
   const toggleActive = async (u: UserRow) => {
-    const res = await fetch(`/api/admin/${u.id}/toggle-active`, { method: "POST" });
-    if (!res.ok) { alert("Gagal mengubah status."); return; }
-    refresh();
+    setBusyAction({ id: u.id, action: "toggle" });
+    try {
+      const res = await fetch(`/api/admin/${u.id}/toggle-active`, { method: "POST" });
+      if (!res.ok) { alert("Gagal mengubah status."); return; }
+      refresh();
+    } catch {
+      alert("Gagal mengubah status. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setBusyAction(null);
+    }
   };
   const remove = async (u: UserRow) => {
     const ok = await confirm({
@@ -110,10 +119,17 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       confirmLabel: "Hapus Akun",
     });
     if (!ok) return;
-    const res = await fetch(`/api/admin/${u.id}`, { method: "DELETE" });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { alert(data.error || "Gagal menghapus."); return; }
-    refresh();
+    setBusyAction({ id: u.id, action: "delete" });
+    try {
+      const res = await fetch(`/api/admin/${u.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { alert(data.error || "Gagal menghapus."); return; }
+      refresh();
+    } catch {
+      alert("Gagal menghapus akun. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   const copyCreds = () => {
@@ -261,11 +277,12 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
                   <div className="flex gap-1.5 justify-end">
                     <button onClick={() => openEdit(u)} className="text-xs font-semibold flex items-center gap-1 text-gray-500 px-2 py-1"><Pencil size={12} /> Edit</button>
                     <button onClick={() => resetPassword(u)} className="text-xs font-semibold text-gray-500 px-2 py-1">Reset PW</button>
-                    <button onClick={() => toggleActive(u)} className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${u.active ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400" : "bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark"}`}>
+                    <button onClick={() => toggleActive(u)} disabled={busyAction?.id === u.id} className={`text-xs font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg disabled:opacity-60 ${u.active ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400" : "bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark"}`}>
+                      {busyAction?.id === u.id && busyAction.action === "toggle" && <ActionSpinner />}
                       {u.active ? "Nonaktifkan" : "Aktifkan"}
                     </button>
-                    <button onClick={() => remove(u)} className="text-xs font-semibold flex items-center gap-1 text-red-700 dark:text-red-400 px-2 py-1">
-                      <Trash2 size={12} /> Hapus
+                    <button onClick={() => remove(u)} disabled={busyAction?.id === u.id} className="text-xs font-semibold flex items-center gap-1 text-red-700 dark:text-red-400 px-2 py-1 disabled:opacity-60">
+                      {busyAction?.id === u.id && busyAction.action === "delete" ? <ActionSpinner /> : <Trash2 size={12} />} {busyAction?.id === u.id && busyAction.action === "delete" ? "Menghapus…" : "Hapus"}
                     </button>
                   </div>
                 </td>
@@ -333,7 +350,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={() => setAddOpen(false)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submitAdd} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-            {saving ? "Menyimpan…" : "Simpan"}
+            {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan"}
           </button>
         </div>
       </Modal>
@@ -344,7 +361,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={() => setEditUser(null)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submitEdit} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-            {saving ? "Menyimpan…" : "Simpan"}
+            {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan"}
           </button>
         </div>
       </Modal>
@@ -396,7 +413,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
         <div className="flex justify-end gap-2">
           <button onClick={() => setImportOpen(false)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submitImport} disabled={!importRows.length || importing} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-50 text-white rounded-lg px-4 py-2">
-            {importing ? "Mengimpor…" : `Impor ${importRows.length || ""} Akun`}
+            {importing ? <><ActionSpinner /> Mengimpor…</> : `Impor ${importRows.length || ""} Akun`}
           </button>
         </div>
       </Modal>

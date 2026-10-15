@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Kalender = { tahunAkademik: string; semester: string; totalMinggu: number; currentWeek: number };
 type MateriRow = { week: number; tahsin: string; keislaman: string };
@@ -50,7 +51,7 @@ export function KalenderClient({ kalender, materi }: { kalender: Kalender; mater
           <Field label="Minggu Berjalan"><input type="number" min={1} max={kal.totalMinggu} value={kal.currentWeek} onChange={(e) => setKal((k) => ({ ...k, currentWeek: Number(e.target.value) }))} className={inputCls} /></Field>
         </div>
         <button onClick={saveKalender} disabled={savingKal} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-          {savingKal ? "Menyimpan…" : "Simpan Kalender"}
+          {savingKal ? <><ActionSpinner /> Menyimpan…</> : "Simpan Kalender"}
         </button>
       </div>
 
@@ -58,7 +59,7 @@ export function KalenderClient({ kalender, materi }: { kalender: Kalender; mater
         <div className="px-5 py-4 flex items-center justify-between border-b border-[#dcefe2] dark:border-[#1d3527]">
           <div className="font-semibold text-sm">Materi Mingguan</div>
           <button onClick={saveMateri} disabled={savingMateri} className="text-xs font-bold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-3 py-2">
-            {savingMateri ? "Menyimpan…" : "Simpan Materi"}
+            {savingMateri ? <><ActionSpinner /> Menyimpan…</> : "Simpan Materi"}
           </button>
         </div>
         <div className="overflow-x-auto">

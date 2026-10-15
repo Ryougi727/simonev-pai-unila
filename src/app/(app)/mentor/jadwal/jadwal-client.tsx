@@ -6,6 +6,7 @@ import { Plus, Pencil, X, RotateCcw } from "lucide-react";
 import { statusForPertemuan } from "@/lib/status";
 import { StatusBadge } from "@/components/status-badge";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Pertemuan = { id: string; week: number; date: string; time: string; location: string; status: string };
 type Kelompok = { id: string; name: string; pertemuan: Pertemuan[] };
@@ -98,7 +99,7 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
                           disabled={resettingId === rec!.id}
                           className="text-[11px] font-semibold flex items-center gap-1 text-red-500 dark:text-red-400 disabled:opacity-60"
                         >
-                          <RotateCcw size={11} /> {resettingId === rec!.id ? "Mereset…" : "Reset"}
+                          {resettingId === rec!.id ? <ActionSpinner /> : <RotateCcw size={11} />} {resettingId === rec!.id ? "Mereset…" : "Reset"}
                         </button>
                       ) : rec ? (
                         <>
@@ -110,7 +111,7 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
                             disabled={resettingId === rec.id}
                             className="text-[11px] font-semibold flex items-center gap-1 text-red-500 dark:text-red-400 disabled:opacity-60"
                           >
-                            <RotateCcw size={11} /> {resettingId === rec.id ? "…" : "Reset"}
+                            {resettingId === rec.id ? <ActionSpinner /> : <RotateCcw size={11} />} {resettingId === rec.id ? "Mereset…" : "Reset"}
                           </button>
                         </>
                       ) : (
@@ -144,7 +145,7 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={() => setModal(null)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submit} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-            {saving ? "Menyimpan…" : "Simpan"}
+            {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan"}
           </button>
         </div>
       </Modal>

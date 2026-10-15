@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { resizeImageToBlob } from "@/lib/image";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Me = { username: string; name: string; email: string; phone: string; bio: string; photoUrl: string | null };
 
@@ -74,7 +75,7 @@ export function ProfilClient({ me }: { me: Me }) {
           </div>
           <div>
             <button onClick={() => fileRef.current?.click()} disabled={uploadingPhoto} className="flex items-center gap-1.5 text-xs font-bold bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark rounded-lg px-3 py-2 disabled:opacity-60">
-              <Upload size={13} /> {uploadingPhoto ? "Mengunggah…" : "Unggah Foto"}
+              {uploadingPhoto ? <ActionSpinner /> : <Upload size={13} />} {uploadingPhoto ? "Mengunggah…" : "Unggah Foto"}
             </button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
           </div>
@@ -103,7 +104,7 @@ export function ProfilClient({ me }: { me: Me }) {
         </label>
         <div className="flex gap-2">
           <button onClick={save} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2.5">
-            {saving ? "Menyimpan…" : "Simpan Profil"}
+            {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan Profil"}
           </button>
           <button onClick={() => setPwOpen(true)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2.5">
             Ganti Password
@@ -124,7 +125,7 @@ export function ProfilClient({ me }: { me: Me }) {
         <div className="flex justify-end gap-2 mt-2">
           <button onClick={() => setPwOpen(false)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={savePassword} disabled={pwSaving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-            {pwSaving ? "Menyimpan…" : "Simpan"}
+            {pwSaving ? <><ActionSpinner /> Menyimpan…</> : "Simpan"}
           </button>
         </div>
       </Modal>

@@ -190,6 +190,21 @@ body {
   @apply bg-background text-on-background font-body;
 }
 
+@keyframes route-progress {
+  0% { transform: scaleX(0); }
+  65% { transform: scaleX(0.72); }
+  90% { transform: scaleX(0.88); }
+  100% { transform: scaleX(0.92); }
+}
+
+.animate-route-progress {
+  animation: route-progress 2s ease-out forwards;
+}
+
+.route-progress-bar {
+  box-shadow: 0 0 10px rgb(var(--primary) / 0.65);
+}
+
 .theme-switcher-menu {
   right: max(0.75rem, env(safe-area-inset-right));
   width: min(15rem, calc(100vw - 2rem));

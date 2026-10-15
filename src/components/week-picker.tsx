@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDataLoading } from "@/components/data-loading";
 
 const FACULTIES = ["FMIPA", "Teknik", "Ekonomi & Bisnis", "Hukum", "Pertanian", "ISIP", "KIP", "Kedokteran"];
 
@@ -11,6 +13,7 @@ export function WeekPicker({
   pageSize,
   faculty,
   showFacultyFilter = false,
+  showDataSkeleton = false,
 }: {
   totalMinggu: number;
   active: number;
@@ -18,16 +21,27 @@ export function WeekPicker({
   pageSize?: number;
   faculty?: string;
   showFacultyFilter?: boolean;
+  showDataSkeleton?: boolean;
 }) {
   const router = useRouter();
+  const { startLoading } = useDataLoading();
+  const [selectedWeek, setSelectedWeek] = useState(active);
+  const [selectedFaculty, setSelectedFaculty] = useState(faculty || "all");
+
+  useEffect(() => setSelectedWeek(active), [active]);
+  useEffect(() => setSelectedFaculty(faculty || "all"), [faculty]);
 
   const updateFilters = (next: { week?: string; faculty?: string }) => {
+    const nextWeek = next.week ?? String(selectedWeek);
+    const nextFaculty = next.faculty ?? selectedFaculty;
     const params = new URLSearchParams();
-    params.set("week", next.week ?? String(active));
+    params.set("week", nextWeek);
     if (pageSize) params.set("pageSize", String(pageSize));
-    const nextFaculty = next.faculty ?? faculty;
     if (nextFaculty && nextFaculty !== "all") params.set("faculty", nextFaculty);
     params.set("page", "1");
+    if (next.week) setSelectedWeek(Number(next.week));
+    if (next.faculty) setSelectedFaculty(next.faculty);
+    if (showDataSkeleton) startLoading();
     router.push(`${basePath}?${params.toString()}`);
   };
 
@@ -37,7 +51,7 @@ export function WeekPicker({
         <label className="flex items-center gap-2 text-xs text-gray-500">
           Fakultas
           <select
-            value={faculty || "all"}
+            value={selectedFaculty}
             onChange={(event) => updateFilters({ faculty: event.target.value })}
             aria-label="Pilih fakultas untuk monitoring"
             className="rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"
@@ -50,7 +64,7 @@ export function WeekPicker({
       <label className="flex items-center gap-2 text-xs text-gray-500">
         Minggu
         <select
-          value={active}
+          value={selectedWeek}
           onChange={(event) => updateFilters({ week: event.target.value })}
           aria-label="Pilih minggu monitoring"
           className="rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm text-on-surface outline-none focus:border-primary"

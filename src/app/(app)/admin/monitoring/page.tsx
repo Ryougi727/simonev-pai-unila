@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { WeekPicker } from "@/components/week-picker";
 import { TablePagination } from "@/components/table-pagination";
 import { MeetingSummary } from "@/components/meeting-summary";
+import { TableLoadingRegion } from "@/components/data-loading";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +71,11 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
           pageSize={pageSize}
           faculty={faculty}
           showFacultyFilter
+          showDataSkeleton
         />
       </div>
       <MeetingSummary week={week} completedCount={completedCount} pendingGroups={pendingGroups} />
+      <TableLoadingRegion loadingKey={`${week}:${faculty}:${page}:${pageSize}`} columns={5}>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
@@ -116,8 +119,10 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
           totalItems={kelompok.length}
           query={{ week: String(week), ...(faculty !== "all" ? { faculty } : {}) }}
           itemLabel="kelompok"
+          showDataSkeleton
         />
       </div>
+      </TableLoadingRegion>
     </div>
   );
 }

@@ -27,12 +27,14 @@ export default async function LandingPage() {
   const galeriSubtitle = settings?.galeriSubtitle ?? "Momen Praktikum PAI";
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="relative isolate min-h-screen flex flex-col bg-surface-container-lowest">
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <IslamicPatternBackground />
+      </div>
       <PublicHeader />
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <IslamicPatternBackground />
         <div className="hero-theme-effects" aria-hidden="true">
           {Array.from({ length: 14 }, (_, index) => (
             <span className="sakura-petal" key={`petal-${index}`} />

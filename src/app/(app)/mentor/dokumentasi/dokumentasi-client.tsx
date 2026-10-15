@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Upload, X } from "lucide-react";
 import { resizeImageToBlob } from "@/lib/image";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Photo = { id: string; url: string };
 type Pertemuan = { id: string; week: number; photos: Photo[] };
@@ -18,6 +19,7 @@ export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: numb
   const [activePId, setActivePId] = useState(kelompok.pertemuan[0]?.id);
   const pertemuan = kelompok.pertemuan.find((p) => p.id === activePId) || kelompok.pertemuan[0];
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onKelompokChange = (id: string) => {
@@ -54,9 +56,16 @@ export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: numb
       message: "Foto ini akan dihapus dari dokumentasi pertemuan.",
       confirmLabel: "Hapus Foto",
     })) return;
-    const res = await fetch(`/api/mentor/dokumentasi/${photoId}`, { method: "DELETE" });
-    if (!res.ok) { alert("Gagal menghapus."); return; }
-    router.refresh();
+    setDeletingId(photoId);
+    try {
+      const res = await fetch(`/api/mentor/dokumentasi/${photoId}`, { method: "DELETE" });
+      if (!res.ok) { alert("Gagal menghapus."); return; }
+      router.refresh();
+    } catch {
+      alert("Gagal menghapus foto. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   if (!pertemuan) {
@@ -81,7 +90,7 @@ export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: numb
         {pertemuan.photos.length < maxPhotos && (
           <>
             <button onClick={() => fileRef.current?.click()} disabled={uploading} className="flex items-center gap-1.5 text-xs font-bold bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark rounded-lg px-3 py-2 disabled:opacity-60">
-              <Upload size={14} /> {uploading ? "Mengunggah…" : "Unggah Foto"}
+              {uploading ? <ActionSpinner /> : <Upload size={14} />} {uploading ? "Mengunggah…" : "Unggah Foto"}
             </button>
             <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onUpload} />
           </>
@@ -95,8 +104,8 @@ export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: numb
             <div key={p.id} className="relative rounded-lg overflow-hidden border border-[#dcefe2] dark:border-[#1d3527] aspect-square">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.url} alt="" className="w-full h-full object-cover" />
-              <button onClick={() => remove(p.id)} className="absolute top-1.5 right-1.5 bg-black/55 rounded-full w-5 h-5 flex items-center justify-center text-white">
-                <X size={11} />
+              <button onClick={() => remove(p.id)} disabled={deletingId === p.id} className="absolute top-1.5 right-1.5 bg-black/55 rounded-full w-5 h-5 flex items-center justify-center text-white disabled:opacity-60">
+                {deletingId === p.id ? <ActionSpinner /> : <X size={11} />}
               </button>
             </div>
           ))}

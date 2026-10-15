@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Upload, X } from "lucide-react";
 import { resizeImageToBlob } from "@/lib/image";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 const MAX_GALERI = 10;
 
@@ -13,6 +14,7 @@ export function GaleriClient({ fotos, subtitle }: { fotos: { id: string; url: st
   const { confirm, dialog } = useConfirmDialog();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [sub, setSub] = useState(subtitle);
   const [savingSub, setSavingSub] = useState(false);
@@ -48,9 +50,16 @@ export function GaleriClient({ fotos, subtitle }: { fotos: { id: string; url: st
       message: "Foto ini akan dihapus permanen dari galeri.",
       confirmLabel: "Hapus Foto",
     })) return;
-    const res = await fetch(`/api/admin/galeri/${id}`, { method: "DELETE" });
-    if (!res.ok) { alert("Gagal menghapus."); return; }
-    router.refresh();
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/galeri/${id}`, { method: "DELETE" });
+      if (!res.ok) { alert("Gagal menghapus."); return; }
+      router.refresh();
+    } catch {
+      alert("Gagal menghapus foto. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const saveSubtitle = async () => {
@@ -73,7 +82,7 @@ export function GaleriClient({ fotos, subtitle }: { fotos: { id: string; url: st
         <div className="flex gap-2">
           <input value={sub} onChange={(e) => setSub(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary text-sm" placeholder="cth. Pertemuan Perdana Kelompok" />
           <button onClick={saveSubtitle} disabled={savingSub} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2 shrink-0">
-            {savingSub ? "…" : "Simpan"}
+            {savingSub ? <><ActionSpinner /> Menyimpan…</> : "Simpan"}
           </button>
         </div>
       </div>
@@ -84,7 +93,7 @@ export function GaleriClient({ fotos, subtitle }: { fotos: { id: string; url: st
           {room > 0 && (
             <>
               <button onClick={() => fileRef.current?.click()} disabled={uploading} className="flex items-center gap-1.5 text-xs font-bold bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark rounded-lg px-3 py-2 disabled:opacity-60">
-                <Upload size={13} /> {uploading ? "Mengunggah…" : "Tambah Foto"}
+                {uploading ? <ActionSpinner /> : <Upload size={13} />} {uploading ? "Mengunggah…" : "Tambah Foto"}
               </button>
               <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onUpload} />
             </>
@@ -95,7 +104,9 @@ export function GaleriClient({ fotos, subtitle }: { fotos: { id: string; url: st
             <div key={f.id} className="relative aspect-square rounded-lg overflow-hidden border border-[#dcefe2] dark:border-[#1d3527]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={f.url} alt="" className="w-full h-full object-cover" />
-              <button onClick={() => remove(f.id)} className="absolute top-1.5 right-1.5 bg-black/55 rounded-full w-6 h-6 flex items-center justify-center text-white"><X size={13} /></button>
+              <button onClick={() => remove(f.id)} disabled={deletingId === f.id} className="absolute top-1.5 right-1.5 bg-black/55 rounded-full w-6 h-6 flex items-center justify-center text-white disabled:opacity-60">
+                {deletingId === f.id ? <ActionSpinner /> : <X size={13} />}
+              </button>
             </div>
           ))}
           {!fotos.length && <div className="col-span-full text-center text-gray-400 text-xs py-10">Belum ada foto galeri.</div>}

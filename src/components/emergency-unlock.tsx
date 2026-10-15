@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ShieldAlert, X, AlertTriangle } from "lucide-react";
+import { ActionSpinner } from "./action-spinner";
 
 type Candidate = { id: string; kelompokName: string; week: number; date: string; unlocked: boolean };
 
@@ -96,7 +97,7 @@ export function EmergencyUnlockButton({ collapsed }: { collapsed?: boolean }) {
                   </label>
                   {error && <div className="text-red-600 text-xs font-semibold mb-2">{error}</div>}
                   <button onClick={submit} disabled={submitting} className="w-full mt-2 text-sm font-semibold bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg py-2.5">
-                    {submitting ? "Membuka…" : "Buka Kunci"}
+                    {submitting ? <><ActionSpinner /> Membuka…</> : "Buka Kunci"}
                   </button>
                 </>
               )}

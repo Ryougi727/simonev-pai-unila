@@ -4,8 +4,10 @@ import { useState } from "react";
 import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { User, Lock, Eye, EyeOff, ArrowRight, HelpCircle } from "lucide-react";
+import { User, Lock, Eye, EyeOff, ArrowRight, HelpCircle, Home } from "lucide-react";
+import Link from "next/link";
 import { IslamicPatternBackground } from "@/components/islamic-pattern";
+import { ActionSpinner } from "@/components/action-spinner";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,10 +22,18 @@ export default function LoginPage() {
     setError("");
     if (!username.trim() || !password) { setError("Isi username dan password."); return; }
     setLoading(true);
-    const res = await signIn("credentials", { username, password, redirect: false });
-    setLoading(false);
-    if (res?.error) { setError("Username atau password salah."); return; }
-    router.push("/dashboard");
+    try {
+      const res = await signIn("credentials", { username, password, redirect: false });
+      if (res?.error) {
+        setLoading(false);
+        setError("Username atau password salah.");
+        return;
+      }
+      router.push("/dashboard");
+    } catch {
+      setLoading(false);
+      setError("Tidak dapat menghubungi server. Silakan coba lagi.");
+    }
   };
 
   return (
@@ -33,6 +43,14 @@ export default function LoginPage() {
       <div className="hidden md:block absolute top-8 left-8 text-[10px] font-mono tracking-widest text-outline uppercase opacity-50">
         v.1.0 // akademik
       </div>
+
+      <Link
+        href="/"
+        className="absolute left-4 top-4 z-20 inline-flex items-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container/80 px-3 py-2 text-sm font-semibold text-on-surface-variant shadow-sm backdrop-blur transition-colors hover:bg-surface-container-high hover:text-on-surface sm:left-8 sm:top-8"
+      >
+        <Home size={16} />
+        Halaman Utama
+      </Link>
 
       <div className="relative z-10 w-full max-w-[420px] bg-surface-container/85 backdrop-blur-2xl rounded-2xl shadow-2xl overflow-hidden border border-outline-variant/30">
         {/* top gradient accent */}
@@ -97,7 +115,7 @@ export default function LoginPage() {
               className="group relative w-full overflow-hidden bg-primary hover:bg-primary-hover dark:bg-primary-dark dark:hover:bg-primary-darkHover text-white dark:text-[#00391d] rounded-lg py-3.5 font-bold text-sm flex items-center justify-center gap-2 shadow-md disabled:opacity-60 transition-all active:scale-[0.98]"
             >
               <span className="relative z-10 flex items-center gap-2">
-                {loading ? "Memproses…" : "Masuk Ke Sistem"}
+                {loading ? <><ActionSpinner /> Memproses…</> : "Masuk Ke Sistem"}
                 {!loading && <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />}
               </span>
               <span className="absolute top-0 -left-[100%] w-1/2 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-12 transition-all duration-700 ease-in-out group-hover:left-[200%]" />

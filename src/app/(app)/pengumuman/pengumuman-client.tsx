@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Paperclip, Trash2, X, FileText } from "lucide-react";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Item = {
   id: string; title: string; body: string; targetFaculty: string | null;
@@ -24,6 +25,7 @@ export function PengumumanClient({
   const [targetFaculty, setTargetFaculty] = useState(""); // "" = semua fakultas (admin only)
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = () => { setTitle(""); setBody(""); setTargetFaculty(""); setFile(null); };
@@ -56,10 +58,17 @@ export function PengumumanClient({
       message: "Pengumuman akan dihapus permanen dan tidak dapat dipulihkan.",
       confirmLabel: "Hapus Pengumuman",
     })) return;
-    const res = await fetch(`/api/pengumuman/${id}`, { method: "DELETE" });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { alert(data.error || "Gagal menghapus."); return; }
-    router.refresh();
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/pengumuman/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { alert(data.error || "Gagal menghapus."); return; }
+      router.refresh();
+    } catch {
+      alert("Gagal menghapus pengumuman. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -80,7 +89,9 @@ export function PengumumanClient({
               <div className="flex justify-between items-start gap-2 mb-1.5">
                 <div className="font-display text-base font-semibold">{it.title}</div>
                 {canDelete && (
-                  <button onClick={() => remove(it.id)} className="text-red-600 dark:text-red-400 shrink-0"><Trash2 size={15} /></button>
+                  <button onClick={() => remove(it.id)} disabled={deletingId === it.id} aria-label="Hapus pengumuman" className="text-red-600 dark:text-red-400 shrink-0 disabled:opacity-60">
+                    {deletingId === it.id ? <ActionSpinner /> : <Trash2 size={15} />}
+                  </button>
                 )}
               </div>
               <div className="text-[11px] text-gray-400 mb-3">
@@ -135,7 +146,7 @@ export function PengumumanClient({
           <div className="flex justify-end gap-2">
             <button onClick={() => setModalOpen(false)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
             <button onClick={submit} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-              {saving ? "Mengirim…" : "Kirim Pengumuman"}
+              {saving ? <><ActionSpinner /> Mengirim…</> : "Kirim Pengumuman"}
             </button>
           </div>
         </Modal>

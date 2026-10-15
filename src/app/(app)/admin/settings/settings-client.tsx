@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Settings = { appName: string; qrDurationMinutes: number; maxPhotos: number; defaultTheme: string; galeriSubtitle: string };
 
@@ -70,7 +71,7 @@ export function SettingsClient({ settings, hasEmergencyPassword }: { settings: S
           <input type="text" name="gallery-subtitle" autoComplete="off" value={form.galeriSubtitle} onChange={(e) => setForm((f) => ({ ...f, galeriSubtitle: e.target.value }))} className={inputCls} placeholder="cth. Pertemuan Perdana Kelompok" />
         </label>
         <button type="submit" disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2.5">
-          {saving ? "Menyimpan…" : "Simpan Pengaturan"}
+          {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan Pengaturan"}
         </button>
       </form>
 
@@ -88,7 +89,7 @@ export function SettingsClient({ settings, hasEmergencyPassword }: { settings: S
           <input type="password" name="emergency-password" autoComplete="new-password" value={emergencyPassword} onChange={(e) => setEmergencyPassword(e.target.value)} className={inputCls} placeholder="Minimal 6 karakter" />
         </label>
         <button type="submit" disabled={savingEmergency} className="text-sm font-semibold bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg px-4 py-2.5">
-          {savingEmergency ? "Menyimpan…" : "Simpan Sandi Darurat"}
+          {savingEmergency ? <><ActionSpinner /> Menyimpan…</> : "Simpan Sandi Darurat"}
         </button>
       </form>
       {dialog}

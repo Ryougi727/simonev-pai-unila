@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { IslamicPatternBackground } from "@/components/islamic-pattern";
+import { ActionSpinner } from "@/components/action-spinner";
 
 export default function ChangePasswordPage() {
   const { data: session, update } = useSession();
@@ -59,7 +60,7 @@ export default function ChangePasswordPage() {
           </label>
           {error && <div className="text-error text-xs font-semibold my-2">{error}</div>}
           <button type="submit" disabled={loading} className="w-full mt-4 bg-primary hover:bg-primary-hover dark:bg-primary-dark dark:hover:bg-primary-darkHover text-white dark:text-[#00391d] font-bold py-3 rounded-lg shadow-md disabled:opacity-60 transition active:scale-[0.98]">
-            {loading ? "Menyimpan…" : mustChangePassword ? "Simpan & Lanjutkan" : "Simpan Password"}
+            {loading ? <><ActionSpinner /> Menyimpan…</> : mustChangePassword ? "Simpan & Lanjutkan" : "Simpan Password"}
           </button>
           <button type="button" onClick={() => signOut({ callbackUrl: "/login" })} className="w-full text-center text-xs text-on-surface-variant mt-3 hover:text-on-surface transition-colors">
             Keluar

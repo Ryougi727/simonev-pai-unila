@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { Download } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TablePagination } from "@/components/table-pagination";
+import { DataLoadingLink, TableLoadingRegion } from "@/components/data-loading";
 
 export const dynamic = "force-dynamic";
 
@@ -73,18 +73,20 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
         </a>
       </div>
       <div className="flex gap-2 mb-4">
-        {([["kelompok", "Per Kelompok"], ["mentor", "Per Mentor"], ["fakultas", "Per Fakultas"]] as [Mode, string][]).map(([m, label]) => (
-          <Link
-            key={m}
-            href={`/admin/rekap?mode=${m}&pageSize=${pageSize}`}
-            className={`text-xs font-bold px-3.5 py-1.5 rounded-full border ${
-              mode === m ? "bg-primary-soft dark:bg-primary-darkSoft border-primary text-primary-hover dark:text-primary-dark" : "border-[#dcefe2] dark:border-[#1d3527] text-gray-500"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
+        {([["kelompok", "Per Kelompok"], ["mentor", "Per Mentor"], ["fakultas", "Per Fakultas"]] as [Mode, string][]).map(([m, label]) => {
+          const className = `text-xs font-bold px-3.5 py-1.5 rounded-full border ${
+            mode === m ? "bg-primary-soft dark:bg-primary-darkSoft border-primary text-primary-hover dark:text-primary-dark" : "border-[#dcefe2] dark:border-[#1d3527] text-gray-500"
+          }`;
+          return mode === m ? (
+            <span key={m} aria-current="page" className={className}>{label}</span>
+          ) : (
+            <DataLoadingLink key={m} href={`/admin/rekap?mode=${m}&pageSize=${pageSize}`} className={className}>
+              {label}
+            </DataLoadingLink>
+          );
+        })}
       </div>
+      <TableLoadingRegion loadingKey={`${mode}:${page}:${pageSize}`} columns={4}>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
@@ -125,8 +127,10 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
           totalItems={rows.length}
           query={{ mode }}
           itemLabel={mode === "kelompok" ? "kelompok" : mode === "mentor" ? "mentor" : "fakultas"}
+          showDataSkeleton
         />
       </div>
+      </TableLoadingRegion>
       <p className="text-[11px] text-gray-400 mt-3">Rekap semester lampau akan tersedia setelah semester ini diarsipkan pada menu Arsip Semester.</p>
     </div>
   );

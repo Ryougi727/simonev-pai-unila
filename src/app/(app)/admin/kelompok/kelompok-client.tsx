@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { SearchableMultiSelect } from "@/components/searchable-multi-select";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type KelompokRow = { id: string; name: string; faculty: string; mentorIds: string[]; mentorNames: string[]; praktikanCount: number };
 type Mentor = { id: string; name: string };
@@ -36,6 +37,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
   const [modal, setModal] = useState<{ mode: "add" | "edit"; k?: KelompokRow } | null>(null);
   const [form, setForm] = useState({ name: "", faculty: FACULTIES[0], mentorIds: [] as string[], praktikanIds: [] as string[] });
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const assignedMentorIds = new Set(kelompok.flatMap((k) => k.mentorIds));
 
@@ -83,9 +85,16 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
       message: warn.replace(`Hapus kelompok "${k.name}"?`, "Tindakan ini tidak dapat dibatalkan."),
       confirmLabel: "Hapus Kelompok",
     })) return;
-    const res = await fetch(`/api/admin/kelompok/${k.id}`, { method: "DELETE" });
-    if (!res.ok) { alert("Gagal menghapus."); return; }
-    refresh();
+    setDeletingId(k.id);
+    try {
+      const res = await fetch(`/api/admin/kelompok/${k.id}`, { method: "DELETE" });
+      if (!res.ok) { alert("Gagal menghapus."); return; }
+      refresh();
+    } catch {
+      alert("Gagal menghapus kelompok. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   /* ---------------- generate massal (poin 3) ---------------- */
@@ -159,7 +168,9 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
                 <td className="px-4 py-2.5">
                   <div className="flex gap-1.5 justify-end">
                     <button onClick={() => openEdit(k)} className="text-xs font-semibold flex items-center gap-1 text-gray-500 px-2 py-1"><Pencil size={12} /> Edit</button>
-                    <button onClick={() => remove(k)} className="text-xs font-semibold flex items-center gap-1 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-lg"><Trash2 size={12} /> Hapus</button>
+                    <button onClick={() => remove(k)} disabled={deletingId === k.id} className="text-xs font-semibold flex items-center gap-1 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-lg disabled:opacity-60">
+                      {deletingId === k.id ? <><ActionSpinner /> Menghapus…</> : <><Trash2 size={12} /> Hapus</>}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -257,7 +268,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
         <div className="flex justify-end gap-2 mt-5">
           <button onClick={() => setModal(null)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submit} disabled={saving} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg px-4 py-2">
-            {saving ? "Menyimpan…" : "Simpan"}
+            {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan"}
           </button>
         </div>
       </Modal>
@@ -320,7 +331,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
         <div className="flex justify-end gap-2">
           <button onClick={() => setGenOpen(false)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>
           <button onClick={submitGenerate} disabled={generating || (genMode === "auto-mentor" && availableMentorCount === 0)} className="text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-50 text-white rounded-lg px-4 py-2">
-            {generating ? "Membuat…" : "Buat Kelompok"}
+            {generating ? <><ActionSpinner /> Membuat…</> : "Buat Kelompok"}
           </button>
         </div>
       </Modal>

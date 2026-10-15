@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useDataLoading } from "@/components/data-loading";
 
 type TablePaginationProps = {
   basePath: string;
@@ -11,12 +12,14 @@ type TablePaginationProps = {
   totalItems: number;
   query?: Record<string, string>;
   itemLabel: string;
+  showDataSkeleton?: boolean;
 };
 
 export function TablePagination({
-  basePath, page, pageSize, totalItems, query = {}, itemLabel,
+  basePath, page, pageSize, totalItems, query = {}, itemLabel, showDataSkeleton = false,
 }: TablePaginationProps) {
   const router = useRouter();
+  const { startLoading } = useDataLoading();
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const params = new URLSearchParams(query);
   params.set("pageSize", String(pageSize));
@@ -38,6 +41,7 @@ export function TablePagination({
             const nextParams = new URLSearchParams(params);
             nextParams.set("pageSize", event.target.value);
             nextParams.set("page", "1");
+            if (showDataSkeleton) startLoading();
             router.push(`${basePath}?${nextParams.toString()}`);
           }}
           className="rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-2 py-1.5 text-on-surface outline-none focus:border-primary"
@@ -53,6 +57,9 @@ export function TablePagination({
       <div className="flex items-center gap-2">
         <Link
           href={hrefForPage(Math.max(1, page - 1))}
+          onClick={(event) => {
+            if (showDataSkeleton && !event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) startLoading();
+          }}
           aria-disabled={page <= 1}
           tabIndex={page <= 1 ? -1 : undefined}
           className={`flex items-center gap-1 rounded-lg border border-[#dcefe2] dark:border-[#1d3527] px-2.5 py-1.5 ${page <= 1 ? "pointer-events-none opacity-40" : ""}`}
@@ -62,6 +69,9 @@ export function TablePagination({
         <span className="text-gray-500">Halaman {page} dari {totalPages}</span>
         <Link
           href={hrefForPage(Math.min(totalPages, page + 1))}
+          onClick={(event) => {
+            if (showDataSkeleton && !event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) startLoading();
+          }}
           aria-disabled={page >= totalPages}
           tabIndex={page >= totalPages ? -1 : undefined}
           className={`flex items-center gap-1 rounded-lg border border-[#dcefe2] dark:border-[#1d3527] px-2.5 py-1.5 ${page >= totalPages ? "pointer-events-none opacity-40" : ""}`}

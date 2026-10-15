@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import QRCode from "qrcode";
 import { QrCode as QrCodeIcon, RotateCcw, AlertTriangle } from "lucide-react";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Praktikan = { id: string; npm: string; name: string };
 type AbsensiStatus = "HADIR" | "IZIN" | "SAKIT" | "TIDAK_HADIR";
@@ -166,7 +167,7 @@ export function QRClient({ items }: { items: Item[] }) {
               </div>
               {status !== "SELESAI" && (
                 <button onClick={openQr} disabled={loading} className="w-full bg-primary hover:bg-primary-hover disabled:opacity-60 text-white font-semibold py-2 rounded-lg text-sm">
-                  {loading ? "Membuka…" : "Buka QR Absensi"}
+                  {loading ? <><ActionSpinner /> Membuka…</> : "Buka QR Absensi"}
                 </button>
               )}
             </>
@@ -178,7 +179,7 @@ export function QRClient({ items }: { items: Item[] }) {
             disabled={resetting}
             className="mt-4 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg py-2 disabled:opacity-60"
           >
-            <RotateCcw size={13} /> {resetting ? "Mereset…" : "Reset Pertemuan Ini"}
+            {resetting ? <ActionSpinner /> : <RotateCcw size={13} />} {resetting ? "Mereset…" : "Reset Pertemuan Ini"}
           </button>
         </div>
 

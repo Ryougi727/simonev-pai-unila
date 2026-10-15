@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, History, CheckCircle2 } from "lucide-react";
+import { ActionSpinner } from "@/components/action-spinner";
 
 const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 type AbsenceBreakdown = { izin: string[]; sakit: string[]; tanpaKeterangan: string[] };
@@ -95,7 +96,7 @@ export function BeritaClient({ items, history }: { items: Item[]; history: Histo
               </div>
               <AbsenceDetails breakdown={item.pertemuan.absenceBreakdown} />
               <button onClick={submit} disabled={saving} className="w-full text-sm font-semibold bg-primary hover:bg-primary-hover disabled:opacity-60 text-white rounded-lg py-2.5">
-                {saving ? "Menyimpan…" : "Simpan & Tandai Selesai"}
+                {saving ? <><ActionSpinner /> Menyimpan…</> : "Simpan & Tandai Selesai"}
               </button>
             </div>
           )}

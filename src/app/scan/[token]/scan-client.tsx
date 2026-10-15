@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { CheckCircle2, Circle, Search } from "lucide-react";
+import { ActionSpinner } from "@/components/action-spinner";
 
 type Praktikan = { id: string; npm: string; name: string; done: boolean };
 
@@ -97,7 +98,7 @@ export function ScanClient({ token, praktikan }: { token: string; praktikan: Pra
         disabled={!selectedId || submitting}
         className="w-full bg-primary hover:bg-primary-hover disabled:opacity-50 text-white font-bold rounded-lg py-3 text-sm"
       >
-        {submitting ? "Mengonfirmasi…" : "Konfirmasi Kehadiran"}
+        {submitting ? <><ActionSpinner /> Mengonfirmasi…</> : "Konfirmasi Kehadiran"}
       </button>
     </div>
   );
