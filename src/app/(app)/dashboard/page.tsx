@@ -2,11 +2,12 @@ import { getServerSession } from "next-auth";
 import Link from "next/link";
 import {
   UserCog, Building2, Users, GraduationCap, Clock, MapPin, ArrowRight,
-  CheckCircle2, Megaphone, QrCode,
+  CheckCircle2, Megaphone, QrCode, AlertTriangle,
 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { statusForPertemuan } from "@/lib/status";
+import { getMeetingWarnings } from "@/lib/meeting-warnings";
 import { StatusBadge } from "@/components/status-badge";
 
 export const dynamic = "force-dynamic";
@@ -35,18 +36,39 @@ async function AdminDashboard({ name }: { name: string }) {
     prisma.praktikan.count(),
     prisma.kelompok.findMany({
       where: { OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
-      select: { pertemuan: { where: { week }, select: { status: true, date: true, time: true } } },
+      select: {
+        id: true,
+        name: true,
+        mentor: { select: { name: true } },
+        mentorAssignments: { select: { mentor: { select: { name: true } } } },
+        pertemuan: { where: { week: { lte: week } }, select: { week: true, status: true, date: true, time: true } },
+      },
     }),
     prisma.activityLog.findMany({
       select: { id: true, text: true, at: true },
       orderBy: { at: "desc" },
-      take: 5,
+      take: 6,
     }),
   ]);
 
-  const statuses = kelompokAktif.map((k) => statusForPertemuan(k.pertemuan[0] ?? null));
+  const statuses = kelompokAktif.map((k) =>
+    statusForPertemuan(k.pertemuan.find((meeting) => meeting.week === week) ?? null)
+  );
   const selesai = statuses.filter((s) => s === "selesai").length;
   const pct = kelompokAktif.length ? Math.round((selesai / kelompokAktif.length) * 100) : 0;
+  const warnings = getMeetingWarnings(
+    kelompokAktif.map((k) => ({
+      id: k.id,
+      name: k.name,
+      mentorNames: k.mentorAssignments.length
+        ? k.mentorAssignments.map((assignment) => assignment.mentor.name)
+        : k.mentor?.name ? [k.mentor.name] : [],
+      pertemuan: k.pertemuan,
+    })),
+    week,
+    week
+  );
+  const warningCount = warnings.yellow.length + warnings.orange.length + warnings.red.length;
 
   return (
     <div className="space-y-6">
@@ -66,24 +88,41 @@ async function AdminDashboard({ name }: { name: string }) {
         ]}
       />
 
-      <div className="grid lg:grid-cols-5 gap-4">
-        <Panel title="Pelaksanaan Minggu Ini" className="lg:col-span-2">
-          <div className="flex items-baseline gap-2 mb-3">
-            <span className="font-display text-4xl font-bold text-on-surface">{pct}%</span>
-            <span className="text-xs text-on-surface-variant">{selesai}/{kelompokAktif.length} kelompok selesai</span>
-          </div>
-          <div className="h-2.5 rounded-full bg-surface-container-high overflow-hidden mb-4">
-            <div className="h-full rounded-full bg-gradient-to-r from-primary dark:from-primary-dark to-primary-hover dark:to-primary-darkHover transition-all" style={{ width: `${pct}%` }} />
-          </div>
-          <div className="space-y-2">
-            {(["selesai", "terjadwal", "belum_jadwal", "belum_laksana"] as const).map((s) => (
-              <div key={s} className="flex items-center justify-between text-sm">
-                <StatusBadge status={s} />
-                <span className="font-bold text-on-surface">{statuses.filter((x) => x === s).length}</span>
+      <div className="grid gap-4 lg:grid-cols-5">
+        <div className="space-y-4 lg:col-span-2">
+          <Panel title="Pelaksanaan Minggu Ini">
+            <div className="flex items-baseline gap-2 mb-3">
+              <span className="font-display text-4xl font-bold text-on-surface">{pct}%</span>
+              <span className="text-xs text-on-surface-variant">{selesai}/{kelompokAktif.length} kelompok selesai</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-surface-container-high overflow-hidden mb-4">
+              <div className="h-full rounded-full bg-gradient-to-r from-primary dark:from-primary-dark to-primary-hover dark:to-primary-darkHover transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="space-y-2">
+              {(["selesai", "terjadwal", "belum_jadwal", "belum_laksana"] as const).map((s) => (
+                <div key={s} className="flex items-center justify-between text-sm">
+                  <StatusBadge status={s} />
+                  <span className="font-bold text-on-surface">{statuses.filter((x) => x === s).length}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Kelompok dengan Peringatan">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <AlertTriangle size={21} />
               </div>
-            ))}
-          </div>
-        </Panel>
+              <div>
+                <div className="font-display text-3xl font-bold text-on-surface">{warningCount}</div>
+                <div className="text-xs text-on-surface-variant">kelompok perlu perhatian</div>
+              </div>
+            </div>
+            <Link href="/admin/monitoring" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-primary dark:text-primary-dark">
+              Lihat monitoring <ArrowRight size={12} />
+            </Link>
+          </Panel>
+        </div>
 
         <Panel title="Aktivitas Terbaru" className="lg:col-span-3">
           {activity.length ? (

@@ -7,7 +7,9 @@ import { StatusBadge } from "@/components/status-badge";
 import { WeekPicker } from "@/components/week-picker";
 import { TablePagination } from "@/components/table-pagination";
 import { MeetingSummary } from "@/components/meeting-summary";
+import { MeetingWarningsSection } from "@/components/meeting-warnings";
 import { TableLoadingRegion } from "@/components/data-loading";
+import { getMeetingWarnings } from "@/lib/meeting-warnings";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +34,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
       id: true, name: true,
       mentor: { select: { name: true } },
       mentorAssignments: { select: { mentor: { select: { name: true } } } },
-      pertemuan: { where: { week }, select: { status: true, date: true, time: true } },
+      pertemuan: { where: { week: { lte: week } }, select: { week: true, status: true, date: true, time: true } },
     },
     orderBy: { name: "asc" },
   });
@@ -40,7 +42,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
   const page = Math.min(requestedPage, totalPages);
   const pageRows = kelompok.slice((page - 1) * pageSize, page * pageSize);
   const summaryRows = kelompok.map((k) => {
-    const meeting = k.pertemuan[0] ?? null;
+    const meeting = k.pertemuan.find((record) => record.week === week) ?? null;
     return {
       id: k.id,
       name: k.name,
@@ -54,6 +56,18 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
   const pendingGroups = summaryRows.filter(
     (group): group is (typeof summaryRows)[number] & { status: Exclude<ReturnType<typeof statusForPertemuan>, "selesai"> } =>
       group.status !== "selesai"
+  );
+  const meetingWarnings = getMeetingWarnings(
+    kelompok.map((k) => ({
+      id: k.id,
+      name: k.name,
+      mentorNames: k.mentorAssignments.length
+        ? k.mentorAssignments.map((assignment) => assignment.mentor.name)
+        : k.mentor?.name ? [k.mentor.name] : [],
+      pertemuan: k.pertemuan,
+    })),
+    week,
+    kalender?.currentWeek ?? 1
   );
 
   return (
@@ -77,7 +91,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
           </thead>
           <tbody>
             {pageRows.map((k) => {
-              const rec = k.pertemuan[0];
+              const rec = k.pertemuan.find((meeting) => meeting.week === week);
               const status = statusForPertemuan(rec ?? null);
               return (
                 <tr key={k.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
@@ -105,6 +119,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
         />
       </div>
       </TableLoadingRegion>
+      <MeetingWarningsSection warnings={meetingWarnings} />
     </div>
   );
 }

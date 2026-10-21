@@ -44,7 +44,7 @@ export function ScanClient({ token, praktikan }: { token: string; praktikan: Pra
   if (locked) {
     return (
       <div className="text-left">
-        <div className="flex items-center gap-2 bg-primary-soft border border-primary rounded-lg px-3 py-3 text-primary-hover">
+        <div className="flex items-center gap-2 bg-primary/10 border border-primary/40 rounded-lg px-3 py-3 text-primary-hover dark:text-primary-dark">
           <CheckCircle2 size={18} className="shrink-0" />
           <span className="text-sm font-semibold">Kehadiran atas nama <b>{confirmedName}</b> berhasil dicatat. Terima kasih!</span>
         </div>
@@ -54,19 +54,19 @@ export function ScanClient({ token, praktikan }: { token: string; praktikan: Pra
 
   return (
     <div className="text-left">
-      <p className="text-xs text-gray-500 mb-3">Cari lalu tap nama <b>Anda sendiri</b>, lalu tekan konfirmasi. Satu perangkat hanya bisa mengonfirmasi satu nama.</p>
+      <p className="text-xs text-on-surface-variant mb-3">Cari lalu tap nama <b>Anda sendiri</b>, lalu tekan konfirmasi. Satu perangkat hanya bisa mengonfirmasi satu nama.</p>
 
       <div className="relative mb-2">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Cari nama atau NPM…"
-          className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-[#dcefe2] outline-none focus:border-primary"
+          className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-outline-variant bg-surface text-on-surface placeholder:text-on-surface-variant outline-none focus:border-primary"
         />
       </div>
 
-      {errMsg && <div className="text-red-600 text-xs font-semibold mb-2">{errMsg}</div>}
+      {errMsg && <div className="text-error text-xs font-semibold mb-2">{errMsg}</div>}
 
       <div className="space-y-1.5 max-h-72 overflow-y-auto mb-3">
         {filtered.map((p) => {
@@ -79,18 +79,18 @@ export function ScanClient({ token, praktikan }: { token: string; praktikan: Pra
               disabled={disabled}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm transition-colors ${
                 disabled
-                  ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
+                  ? "bg-surface-container-high border-outline-variant text-on-surface-variant cursor-not-allowed"
                   : isSelected
-                  ? "bg-primary-soft border-primary text-primary-hover font-semibold"
-                  : "bg-[#f2fbf5] border-[#dcefe2]"
+                  ? "bg-primary/10 border-primary text-primary-hover dark:text-primary-dark font-semibold"
+                  : "bg-surface-container-low border-outline-variant text-on-surface"
               }`}
             >
-              <span>{p.name} <span className="text-gray-400 font-normal">· {p.npm}</span></span>
-              {disabled ? <CheckCircle2 size={16} /> : isSelected ? <CheckCircle2 size={16} /> : <Circle size={16} className="text-gray-300" />}
+              <span>{p.name} <span className="text-on-surface-variant font-normal">· {p.npm}</span></span>
+              {disabled ? <CheckCircle2 size={16} /> : isSelected ? <CheckCircle2 size={16} /> : <Circle size={16} className="text-outline" />}
             </button>
           );
         })}
-        {!filtered.length && <div className="text-center text-xs text-gray-400 py-6">Tidak ditemukan.</div>}
+        {!filtered.length && <div className="text-center text-xs text-on-surface-variant py-6">Tidak ditemukan.</div>}
       </div>
 
       <button

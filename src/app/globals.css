@@ -389,3 +389,8 @@ body {
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+button:has(.action-spinner) {
+  min-width: max-content;
+  white-space: nowrap;
+}
