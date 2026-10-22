@@ -11,17 +11,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const mentorIds = [...new Set(Array.isArray(mentorId) ? mentorId.filter(Boolean) : mentorId ? [mentorId] : [])];
   if (mentorIds.length > 2) return NextResponse.json({ error: "Maksimal dua mentor per kelompok." }, { status: 400 });
-  const clashes = await prisma.kelompok.findMany({
-    where: {
-      NOT: { id: params.id },
-      OR: [
-        { mentorId: { in: mentorIds } },
-        { mentorAssignments: { some: { mentorId: { in: mentorIds } } } },
-      ],
-    },
-    select: { id: true },
-  });
-  if (clashes.length) return NextResponse.json({ error: "Salah satu mentor sudah ditugaskan ke kelompok lain." }, { status: 400 });
 
   const ids: string[] | null = Array.isArray(praktikanIds) ? praktikanIds.filter(Boolean) : null;
 

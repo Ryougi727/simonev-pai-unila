@@ -55,10 +55,11 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
     setModal({ mode: "edit", k });
   };
 
-  // mentors already assigned elsewhere are excluded, except the ones this kelompok already has
-  const mentorOptions = mentors
-    .filter((m) => !assignedMentorIds.has(m.id) || form.mentorIds.includes(m.id))
-    .map((m) => ({ id: m.id, label: m.name }));
+  const mentorOptions = mentors.map((m) => ({
+    id: m.id,
+    label: m.name,
+    sublabel: assignedMentorIds.has(m.id) && !form.mentorIds.includes(m.id) ? "Sudah membina kelompok lain" : undefined,
+  }));
 
   // praktikan already in another kelompok are excluded — move them via that kelompok's edit first
   const praktikanOptions = praktikan
@@ -262,7 +263,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
           </select>
         </label>
         <div className="mb-3">
-          <div className="text-xs font-bold text-gray-500 mb-1.5">Mentor Pembimbing (maks. 2)</div>
+          <div className="text-xs font-bold text-gray-500 mb-1.5">Mentor Pembimbing (maks. 2 per kelompok)</div>
           <SearchableMultiSelect
             options={mentorOptions}
             selectedIds={form.mentorIds}
@@ -270,9 +271,9 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
             placeholder="Pilih mentor…"
             searchPlaceholder="Cari nama mentor…"
             maxSelected={2}
-            emptyText="Semua mentor sudah punya kelompok."
+            emptyText="Belum ada mentor aktif."
           />
-          <div className="text-[11px] text-gray-400 mt-1">Hanya mentor tanpa kelompok (atau sudah di kelompok ini) yang muncul.</div>
+          <div className="text-[11px] text-gray-400 mt-1">Mentor dapat membina beberapa kelompok.</div>
         </div>
         <div className="mb-1">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Praktikan dalam Kelompok</div>

@@ -11,16 +11,6 @@ export async function POST(req: Request) {
 
   const mentorIds = [...new Set(Array.isArray(mentorId) ? mentorId.filter(Boolean) : mentorId ? [mentorId] : [])];
   if (mentorIds.length > 2) return NextResponse.json({ error: "Maksimal dua mentor per kelompok." }, { status: 400 });
-  const clashes = await prisma.kelompok.findMany({
-    where: {
-      OR: [
-        { mentorId: { in: mentorIds } },
-        { mentorAssignments: { some: { mentorId: { in: mentorIds } } } },
-      ],
-    },
-    select: { id: true },
-  });
-  if (clashes.length) return NextResponse.json({ error: "Salah satu mentor sudah ditugaskan ke kelompok lain." }, { status: 400 });
 
   const kelompok = await prisma.kelompok.create({
     data: {

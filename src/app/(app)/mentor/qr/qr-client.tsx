@@ -13,14 +13,17 @@ type Item = {
   pertemuanId: string; kelompokId: string; kelompokName: string; week: number; status: string;
   isCurrentWeek: boolean; isEmergency: boolean; qr: QrInfo | null; praktikan: Praktikan[];
 };
+type Group = { id: string; name: string };
 
-export function QRClient({ items }: { items: Item[] }) {
-  const [selectedId, setSelectedId] = useState(items[0].pertemuanId);
+export function QRClient({ groups, items, currentWeek }: { groups: Group[]; items: Item[]; currentWeek: number }) {
+  const [selectedGroupId, setSelectedGroupId] = useState(items[0]?.kelompokId ?? groups[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(items[0]?.pertemuanId ?? "");
   const [liveItems, setLiveItems] = useState(items);
-  const active = liveItems.find((i) => i.pertemuanId === selectedId) || liveItems[0];
+  const groupItems = liveItems.filter((item) => item.kelompokId === selectedGroupId);
+  const active = groupItems.find((item) => item.pertemuanId === selectedId) || groupItems[0];
 
-  const [qr, setQr] = useState<QrInfo | null>(active.qr);
-  const [status, setStatus] = useState(active.status);
+  const [qr, setQr] = useState<QrInfo | null>(active?.qr ?? null);
+  const [status, setStatus] = useState(active?.status ?? "TERJADWAL");
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [attendance, setAttendance] = useState<Record<string, AbsensiStatus>>({});
   const [now, setNow] = useState(Date.now());
@@ -32,8 +35,8 @@ export function QRClient({ items }: { items: Item[] }) {
   const { confirm, dialog } = useConfirmDialog();
 
   useEffect(() => {
-    setQr(active.qr); setStatus(active.status); setError(""); setInfo(""); setAttendance({});
-  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+    setQr(active?.qr ?? null); setStatus(active?.status ?? "TERJADWAL"); setError(""); setInfo(""); setAttendance({});
+  }, [selectedId, selectedGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scanUrl = qr ? `${typeof window !== "undefined" ? window.location.origin : ""}/scan/${qr.token}` : "";
 
@@ -45,6 +48,7 @@ export function QRClient({ items }: { items: Item[] }) {
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
   const poll = useCallback(async () => {
+    if (!selectedId) return;
     const res = await fetch(`/api/qr/status?pertemuanId=${selectedId}`);
     if (!res.ok) return;
     const data = await res.json();
@@ -125,25 +129,48 @@ export function QRClient({ items }: { items: Item[] }) {
 
   return (
     <div>
-      {liveItems.length > 1 && (
+      {groups.length > 1 && (
+        <label className="mb-4 block">
+          <span className="sr-only">Pilih kelompok</span>
+          <select
+            value={selectedGroupId}
+            onChange={(e) => {
+              const groupId = e.target.value;
+              setSelectedGroupId(groupId);
+              setSelectedId(liveItems.find((item) => item.kelompokId === groupId)?.pertemuanId ?? "");
+            }}
+            aria-label="Pilih kelompok untuk QR"
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-full sm:w-72"
+          >
+            {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+          </select>
+        </label>
+      )}
+      {groupItems.length > 1 && (
         <select
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
+          aria-label="Pilih pertemuan untuk QR"
           className="mb-4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-full sm:w-72"
         >
-          {liveItems.map((i) => (
+          {groupItems.map((i) => (
             <option key={i.pertemuanId} value={i.pertemuanId}>
-              {i.kelompokName} — Minggu {i.week}{i.isEmergency ? " (darurat)" : " (berjalan)"}
+              Minggu {i.week}{i.isEmergency ? " (darurat)" : " (berjalan)"}
             </option>
           ))}
         </select>
       )}
-      {active.isEmergency && (
+      {active?.isEmergency && (
         <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 text-xs font-semibold rounded-lg px-3 py-2 mb-4">
           <AlertTriangle size={14} className="shrink-0" /> Ini pertemuan minggu lalu yang dibuka lewat kunci darurat — segera selesaikan.
         </div>
       )}
 
+      {!active ? (
+        <p className="text-sm text-gray-500">
+          Belum ada jadwal untuk kelompok ini pada minggu ke-{currentWeek}. Buat jadwal terlebih dahulu di menu Jadwal Praktikum.
+        </p>
+      ) : (
       <div className="grid md:grid-cols-[300px_1fr] gap-4">
         <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl p-5 text-center">
           <div className="text-xs text-gray-500 mb-2">{active.kelompokName} · Minggu {active.week}</div>
@@ -214,6 +241,7 @@ export function QRClient({ items }: { items: Item[] }) {
           </div>
         </div>
       </div>
+      )}
       {dialog}
     </div>
   );

@@ -40,22 +40,14 @@ export default async function QRAbsensiPage() {
     )
     .sort((a, b) => (a.isCurrentWeek === b.isCurrentWeek ? a.week - b.week : a.isCurrentWeek ? -1 : 1));
 
-  if (!items.length) {
-    return (
-      <div>
-        <h1 className="font-display text-2xl font-semibold mb-4">QR Absensi</h1>
-        <p className="text-sm text-gray-500">
-          Belum ada jadwal untuk minggu ke-{currentWeek}. Buat jadwal terlebih dahulu di menu Jadwal Praktikum — atau kalau
-          ini pertemuan minggu lalu yang terlewat, gunakan tombol "Buka Kunci Darurat" di sidebar.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold mb-4">QR Absensi</h1>
-      <QRClient items={items} />
+      <QRClient
+        groups={kelompokList.map((k) => ({ id: k.id, name: k.name }))}
+        items={items}
+        currentWeek={currentWeek}
+      />
     </div>
   );
 }

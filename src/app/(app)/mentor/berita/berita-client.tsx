@@ -22,6 +22,7 @@ type HistoryEntry = {
   materi: string; catatan: string | null; hadir: number; tidakHadir: number;
   absenceBreakdown: AbsenceBreakdown;
 };
+type Group = { id: string; name: string };
 
 function buildForm(item: Item) {
   const ba = item.pertemuan.beritaAcara;
@@ -32,11 +33,13 @@ function buildForm(item: Item) {
   };
 }
 
-export function BeritaClient({ items, history }: { items: Item[]; history: HistoryEntry[] }) {
+export function BeritaClient({ groups, items, history }: { groups: Group[]; items: Item[]; history: HistoryEntry[] }) {
   const router = useRouter();
-  const [activeId, setActiveId] = useState(items[0]?.pertemuan.id);
+  const [activeGroupId, setActiveGroupId] = useState(items[0]?.kelompokId ?? groups[0]?.id ?? "");
+  const [activeId, setActiveId] = useState(items.find((item) => item.kelompokId === activeGroupId)?.pertemuan.id ?? "");
   const [showHistory, setShowHistory] = useState(false);
-  const item = items.find((i) => i.pertemuan.id === activeId);
+  const groupItems = items.filter((i) => i.kelompokId === activeGroupId);
+  const item = groupItems.find((i) => i.pertemuan.id === activeId) || groupItems[0];
 
   const [form, setForm] = useState(() => (item ? buildForm(item) : { hari: "", tanggal: "", lokasi: "", materi: "", catatan: "" }));
   useEffect(() => { if (item) setForm(buildForm(item)); }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -59,6 +62,23 @@ export function BeritaClient({ items, history }: { items: Item[]; history: Histo
 
   return (
     <div>
+      {groups.length > 1 && (
+        <label className="mb-4 block">
+          <span className="sr-only">Pilih kelompok</span>
+          <select
+            value={activeGroupId}
+            onChange={(e) => {
+              const groupId = e.target.value;
+              setActiveGroupId(groupId);
+              setActiveId(items.find((entry) => entry.kelompokId === groupId)?.pertemuan.id ?? "");
+            }}
+            aria-label="Pilih kelompok untuk berita acara"
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-full sm:w-72"
+          >
+            {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+          </select>
+        </label>
+      )}
       {!items.length ? (
         <p className="text-sm text-gray-500">
           Belum ada jadwal untuk minggu berjalan. Buat jadwal dulu di menu Jadwal Praktikum — atau kalau ini pertemuan
@@ -66,14 +86,24 @@ export function BeritaClient({ items, history }: { items: Item[]; history: Histo
         </p>
       ) : (
         <>
-          {items.length > 1 && (
-            <select value={activeId} onChange={(e) => setActiveId(e.target.value)} className="mb-4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-full sm:w-72">
-              {items.map((i) => (
+          {groupItems.length > 1 && (
+            <select
+              value={item?.pertemuan.id ?? ""}
+              onChange={(e) => setActiveId(e.target.value)}
+              aria-label="Pilih pertemuan untuk berita acara"
+              className="mb-4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-full sm:w-72"
+            >
+              {groupItems.map((i) => (
                 <option key={i.pertemuan.id} value={i.pertemuan.id}>
-                  {i.kelompokName} — Minggu {i.pertemuan.week}{i.isEmergency ? " (darurat)" : " (berjalan)"}
+                  Minggu {i.pertemuan.week}{i.isEmergency ? " (darurat)" : " (berjalan)"}
                 </option>
               ))}
             </select>
+          )}
+          {!groupItems.length && (
+            <p className="text-sm text-gray-500">
+              Belum ada jadwal yang perlu diisi berita acaranya untuk kelompok ini.
+            </p>
           )}
           {item?.isEmergency && (
             <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 text-xs font-semibold rounded-lg px-3 py-2 mb-4 max-w-lg">

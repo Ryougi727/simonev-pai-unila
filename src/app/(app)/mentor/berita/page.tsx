@@ -101,7 +101,11 @@ export default async function MentorBeritaPage() {
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold mb-4">Berita Acara</h1>
-      <BeritaClient items={items} history={history} />
+      <BeritaClient
+        groups={kelompokList.map((k) => ({ id: k.id, name: k.name }))}
+        items={items}
+        history={history}
+      />
     </div>
   );
 }

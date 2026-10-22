@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, X, RotateCcw } from "lucide-react";
+import { Plus, MoreVertical, Pencil, X, RotateCcw, Trash2 } from "lucide-react";
 import { statusForPertemuan } from "@/lib/status";
 import { StatusBadge } from "@/components/status-badge";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
@@ -22,7 +22,27 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
   const [form, setForm] = useState({ date: "", time: "15:30", location: "" });
   const [saving, setSaving] = useState(false);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const { confirm, dialog } = useConfirmDialog();
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const closeMenu = (event: MouseEvent) => {
+      if (event.target instanceof Element && !event.target.closest("[data-schedule-menu]")) {
+        setOpenMenuId(null);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenuId(null);
+    };
+    document.addEventListener("mousedown", closeMenu);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeMenu);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [openMenuId]);
 
   const openModal = (week: number, existing?: Pertemuan) => {
     setForm(existing ? { date: existing.date, time: existing.time, location: existing.location } : { date: "", time: "15:30", location: "" });
@@ -52,24 +72,53 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
       confirmLabel: "Reset Pertemuan",
     });
     if (!confirmed) return;
+    setOpenMenuId(null);
     setResettingId(rec.id);
-    const res = await fetch(`/api/mentor/pertemuan/${rec.id}/reset`, { method: "POST" });
-    const data = await res.json();
-    setResettingId(null);
-    if (!res.ok) { alert(data.error || "Gagal mereset."); return; }
-    router.refresh();
+    try {
+      const res = await fetch(`/api/mentor/pertemuan/${rec.id}/reset`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Gagal mereset."); return; }
+      router.refresh();
+    } catch {
+      alert("Gagal mereset pertemuan. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setResettingId(null);
+    }
+  };
+
+  const deletePertemuan = async (rec: Pertemuan) => {
+    const confirmed = await confirm({
+      title: `Hapus jadwal minggu ${rec.week}?`,
+      message: "Jadwal akan dihapus permanen. Semua presensi, berita acara, QR, dan dokumentasi pertemuan ini juga akan dihapus.",
+      confirmLabel: "Hapus Jadwal",
+    });
+    if (!confirmed) return;
+    setOpenMenuId(null);
+    setDeletingId(rec.id);
+    try {
+      const res = await fetch(`/api/mentor/pertemuan/${rec.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Gagal menghapus jadwal."); return; }
+      router.refresh();
+    } catch {
+      alert("Gagal menghapus jadwal. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
     <div>
-      {kelompokList.length > 1 && (
-        <select value={activeId} onChange={(e) => setActiveId(e.target.value)} className="mb-4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56">
-          {kelompokList.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-        </select>
-      )}
-      <Link href={`/kelompok/${kelompok.id}`} className="mb-4 inline-flex text-sm font-semibold text-primary dark:text-primary-dark hover:underline">
-        Lihat profil {kelompok.name}
-      </Link>
+      <div className="mb-4 flex flex-col items-start gap-3">
+        {kelompokList.length > 1 && (
+          <select value={activeId} onChange={(e) => setActiveId(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56">
+            {kelompokList.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+          </select>
+        )}
+        <Link href={`/kelompok/${kelompok.id}`} className="inline-flex text-sm font-semibold text-primary dark:text-primary-dark hover:underline">
+          Lihat profil {kelompok.name}
+        </Link>
+      </div>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
@@ -96,28 +145,51 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
                   <td className="px-4 py-2.5">{rec?.location || "-"}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={status} /></td>
                   <td className="px-4 py-2.5">
-                    <div className="flex justify-end gap-3">
-                      {locked ? (
-                        <button
-                          onClick={() => resetPertemuan(rec!)}
-                          disabled={resettingId === rec!.id}
-                          className="text-[11px] font-semibold flex items-center gap-1 text-red-500 dark:text-red-400 disabled:opacity-60"
-                        >
-                          {resettingId === rec!.id ? <ActionSpinner /> : <RotateCcw size={11} />} {resettingId === rec!.id ? "Mereset…" : "Reset"}
-                        </button>
-                      ) : rec ? (
-                        <>
-                          <button onClick={() => openModal(w, rec)} className="text-xs font-semibold flex items-center gap-1 text-primary dark:text-primary-dark">
-                            <Pencil size={12} /> Ubah
-                          </button>
+                    <div className="flex justify-end">
+                      {rec ? (
+                        <div className="relative" data-schedule-menu>
                           <button
-                            onClick={() => resetPertemuan(rec)}
-                            disabled={resettingId === rec.id}
-                            className="text-[11px] font-semibold flex items-center gap-1 text-red-500 dark:text-red-400 disabled:opacity-60"
+                            type="button"
+                            aria-label={`Aksi jadwal minggu ${w}`}
+                            aria-haspopup="menu"
+                            aria-expanded={openMenuId === rec.id}
+                            onClick={() => setOpenMenuId((id) => id === rec.id ? null : rec.id)}
+                            disabled={resettingId === rec.id || deletingId === rec.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-60"
                           >
-                            {resettingId === rec.id ? <ActionSpinner /> : <RotateCcw size={11} />} {resettingId === rec.id ? "Mereset…" : "Reset"}
+                            {resettingId === rec.id || deletingId === rec.id ? <ActionSpinner /> : <MoreVertical size={17} />}
                           </button>
-                        </>
+                          {openMenuId === rec.id && (
+                            <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-36 rounded-lg border border-[#dcefe2] bg-white p-1 shadow-lg dark:border-[#1d3527] dark:bg-[#0f1c14]">
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => { setOpenMenuId(null); openModal(w, rec); }}
+                                disabled={locked}
+                                title={locked ? "Jadwal yang sudah selesai tidak dapat diedit" : undefined}
+                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-semibold text-primary dark:text-primary-dark hover:bg-primary-soft dark:hover:bg-primary-darkSoft disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                <Pencil size={13} /> Edit
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => resetPertemuan(rec)}
+                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                              >
+                                <RotateCcw size={13} /> Reset
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => deletePertemuan(rec)}
+                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                              >
+                                <Trash2 size={13} /> Hapus
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <button onClick={() => openModal(w)} className="text-xs font-semibold flex items-center gap-1 text-primary dark:text-primary-dark">
                           <Plus size={12} /> Buat Jadwal
