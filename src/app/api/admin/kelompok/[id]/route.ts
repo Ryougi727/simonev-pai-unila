@@ -6,11 +6,22 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, faculty, mentorId, praktikanIds } = await req.json();
+  const { name, faculty, monitoringStartWeek, mentorId, praktikanIds } = await req.json();
   if (!name?.trim() || !faculty) return NextResponse.json({ error: "Nama dan fakultas wajib diisi." }, { status: 400 });
 
   const mentorIds = [...new Set(Array.isArray(mentorId) ? mentorId.filter(Boolean) : mentorId ? [mentorId] : [])];
   if (mentorIds.length > 2) return NextResponse.json({ error: "Maksimal dua mentor per kelompok." }, { status: 400 });
+  if (!Number.isInteger(monitoringStartWeek) || monitoringStartWeek < 1) {
+    return NextResponse.json({ error: "Minggu mulai monitoring tidak valid." }, { status: 400 });
+  }
+  const kalender = await prisma.kalenderPraktikum.findUnique({
+    where: { id: "singleton" },
+    select: { totalMinggu: true },
+  });
+  const totalWeeks = kalender?.totalMinggu ?? 8;
+  if (monitoringStartWeek > totalWeeks) {
+    return NextResponse.json({ error: `Minggu mulai monitoring harus antara 1 dan ${totalWeeks}.` }, { status: 400 });
+  }
 
   const ids: string[] | null = Array.isArray(praktikanIds) ? praktikanIds.filter(Boolean) : null;
 
@@ -19,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const updated = await tx.kelompok.update({
       where: { id: params.id },
       data: {
-        name: name.trim(), faculty, mentorId: mentorIds[0] || null,
+        name: name.trim(), faculty, monitoringStartWeek, mentorId: mentorIds[0] || null,
         mentorAssignments: { create: mentorIds.map((id: string) => ({ mentorId: id })) },
       },
     });

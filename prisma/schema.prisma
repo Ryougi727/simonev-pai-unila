@@ -56,6 +56,7 @@ model Kelompok {
   id        String      @id @default(cuid())
   name      String
   faculty   String
+  monitoringStartWeek Int @default(1)
   mentorId  String?
   mentor    User?       @relation("MentorKelompok", fields: [mentorId], references: [id])
   mentorAssignments KelompokMentor[]

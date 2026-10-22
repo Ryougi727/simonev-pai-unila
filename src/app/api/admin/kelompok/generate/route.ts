@@ -10,6 +10,11 @@ export async function POST(req: Request) {
   if (!faculty || !prefix?.trim()) {
     return NextResponse.json({ error: "Fakultas dan prefix nama wajib diisi." }, { status: 400 });
   }
+  const kalender = await prisma.kalenderPraktikum.findUnique({
+    where: { id: "singleton" },
+    select: { currentWeek: true },
+  });
+  const monitoringStartWeek = kalender?.currentWeek ?? 1;
 
   let mentorPool: { id: string }[] = [];
   let count: number;
@@ -39,7 +44,7 @@ export async function POST(req: Request) {
     const mentor = mode === "auto-mentor" && autoAssignMentor ? mentorPool[i] : null;
     await prisma.kelompok.create({
       data: {
-        name, faculty,
+        name, faculty, monitoringStartWeek,
         mentorId: mentor?.id || null,
         mentorAssignments: mentor ? { create: [{ mentorId: mentor.id }] } : undefined,
       },

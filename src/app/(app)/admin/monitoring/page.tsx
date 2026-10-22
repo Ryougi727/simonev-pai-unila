@@ -38,7 +38,7 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
       OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }],
     },
     select: {
-      id: true, name: true, faculty: true,
+      id: true, name: true, faculty: true, monitoringStartWeek: true,
       mentor: { select: { name: true } },
       mentorAssignments: { select: { mentor: { select: { name: true } } } },
       pertemuan: { where: { week: { lte: week } }, select: { week: true, status: true, date: true, time: true } },
@@ -56,6 +56,7 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
     return {
       id: k.id,
       name: k.name,
+      monitoringStartWeek: k.monitoringStartWeek,
       mentorNames: k.mentorAssignments.length
         ? k.mentorAssignments.map((assignment) => assignment.mentor.name)
         : k.mentor?.name ? [k.mentor.name] : [],
@@ -71,6 +72,7 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
     kelompok.map((k) => ({
       id: k.id,
       name: k.name,
+      monitoringStartWeek: k.monitoringStartWeek,
       mentorNames: k.mentorAssignments.length
         ? k.mentorAssignments.map((assignment) => assignment.mentor.name)
         : k.mentor?.name ? [k.mentor.name] : [],

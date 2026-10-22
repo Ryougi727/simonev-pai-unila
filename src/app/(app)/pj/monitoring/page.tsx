@@ -34,7 +34,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
   const kelompok = await prisma.kelompok.findMany({
     where: { faculty: user.faculty, OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
     select: {
-      id: true, name: true,
+      id: true, name: true, monitoringStartWeek: true,
       mentor: { select: { name: true } },
       mentorAssignments: { select: { mentor: { select: { name: true } } } },
       pertemuan: { where: { week: { lte: week } }, select: { week: true, status: true, date: true, time: true } },
@@ -52,6 +52,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
     return {
       id: k.id,
       name: k.name,
+      monitoringStartWeek: k.monitoringStartWeek,
       mentorNames: k.mentorAssignments.length
         ? k.mentorAssignments.map((assignment) => assignment.mentor.name)
         : k.mentor?.name ? [k.mentor.name] : [],
@@ -67,6 +68,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
     kelompok.map((k) => ({
       id: k.id,
       name: k.name,
+      monitoringStartWeek: k.monitoringStartWeek,
       mentorNames: k.mentorAssignments.length
         ? k.mentorAssignments.map((assignment) => assignment.mentor.name)
         : k.mentor?.name ? [k.mentor.name] : [],

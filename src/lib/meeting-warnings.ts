@@ -10,6 +10,7 @@ type MeetingRecord = {
 type GroupWithMeetings = {
   id: string;
   name: string;
+  monitoringStartWeek?: number;
   mentorNames: string[];
   pertemuan: MeetingRecord[];
 };
@@ -38,8 +39,14 @@ export function getMeetingWarnings(
   for (const group of groups) {
     const meetingsByWeek = new Map(group.pertemuan.map((meeting) => [meeting.week, meeting]));
     let missedMeetings = 0;
+    const configuredStartWeek = group.monitoringStartWeek;
+    const monitoringStartWeek = typeof configuredStartWeek === "number" &&
+      Number.isInteger(configuredStartWeek) &&
+      configuredStartWeek >= 1
+      ? configuredStartWeek
+      : 1;
 
-    for (let week = 1; week <= throughWeek; week++) {
+    for (let week = monitoringStartWeek; week <= throughWeek; week++) {
       const meeting = meetingsByWeek.get(week);
 
       if (week === currentWeek && (!meeting || statusForPertemuan(meeting) === "terjadwal")) {

@@ -8,13 +8,13 @@ import { SearchableMultiSelect } from "@/components/searchable-multi-select";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
 
-type KelompokRow = { id: string; name: string; faculty: string; mentorIds: string[]; mentorNames: string[]; praktikanCount: number };
+type KelompokRow = { id: string; name: string; faculty: string; monitoringStartWeek: number; mentorIds: string[]; mentorNames: string[]; praktikanCount: number };
 type Mentor = { id: string; name: string };
 type Praktikan = { id: string; npm: string; name: string; kelompokId: string | null };
 
 const FACULTIES = ["FMIPA", "Teknik", "Ekonomi & Bisnis", "Hukum", "Pertanian", "ISIP", "KIP", "Kedokteran"];
 
-export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: KelompokRow[]; mentors: Mentor[]; praktikan: Praktikan[] }) {
+export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, totalWeeks }: { kelompok: KelompokRow[]; mentors: Mentor[]; praktikan: Praktikan[]; currentWeek: number; totalWeeks: number }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const { confirm, dialog } = useConfirmDialog();
@@ -39,19 +39,19 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
   const pageRows = filteredKelompok.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const [modal, setModal] = useState<{ mode: "add" | "edit"; k?: KelompokRow } | null>(null);
-  const [form, setForm] = useState({ name: "", faculty: FACULTIES[0], mentorIds: [] as string[], praktikanIds: [] as string[] });
+  const [form, setForm] = useState({ name: "", faculty: FACULTIES[0], monitoringStartWeek: currentWeek, mentorIds: [] as string[], praktikanIds: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const assignedMentorIds = new Set(kelompok.flatMap((k) => k.mentorIds));
 
   const openAdd = () => {
-    setForm({ name: "", faculty: FACULTIES[0], mentorIds: [], praktikanIds: [] });
+    setForm({ name: "", faculty: FACULTIES[0], monitoringStartWeek: currentWeek, mentorIds: [], praktikanIds: [] });
     setModal({ mode: "add" });
   };
   const openEdit = (k: KelompokRow) => {
     const currentMembers = praktikan.filter((p) => p.kelompokId === k.id).map((p) => p.id);
-    setForm({ name: k.name, faculty: k.faculty, mentorIds: k.mentorIds, praktikanIds: currentMembers });
+    setForm({ name: k.name, faculty: k.faculty, monitoringStartWeek: k.monitoringStartWeek, mentorIds: k.mentorIds, praktikanIds: currentMembers });
     setModal({ mode: "edit", k });
   };
 
@@ -73,7 +73,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
     const method = modal?.mode === "edit" ? "PATCH" : "POST";
     const res = await fetch(url, {
       method, headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, faculty: form.faculty, mentorId: form.mentorIds, praktikanIds: form.praktikanIds }),
+      body: JSON.stringify({ name: form.name, faculty: form.faculty, monitoringStartWeek: form.monitoringStartWeek, mentorId: form.mentorIds, praktikanIds: form.praktikanIds }),
     });
     setSaving(false);
     if (!res.ok) { const d = await res.json(); alert(d.error || "Gagal menyimpan."); return; }
@@ -172,6 +172,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
               <th className="px-4 py-2.5 font-bold">Kelompok</th>
               <th className="px-4 py-2.5 font-bold">Fakultas</th>
               <th className="px-4 py-2.5 font-bold">Mentor</th>
+              <th className="px-4 py-2.5 font-bold">Mulai Monitoring</th>
               <th className="px-4 py-2.5 font-bold">Praktikan</th>
               <th className="px-4 py-2.5"></th>
             </tr>
@@ -184,6 +185,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
                 </td>
                 <td className="px-4 py-2.5">{k.faculty}</td>
                 <td className="px-4 py-2.5">{k.mentorNames.length ? k.mentorNames.join(", ") : <span className="text-gray-400">Belum ditentukan</span>}</td>
+                <td className="px-4 py-2.5">Minggu {k.monitoringStartWeek}</td>
                 <td className="px-4 py-2.5">{k.praktikanCount} orang</td>
                 <td className="px-4 py-2.5">
                   <div className="flex gap-1.5 justify-end">
@@ -197,7 +199,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
             ))}
             {!filteredKelompok.length && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-xs">
+                <td colSpan={6} className="px-4 py-10 text-center text-gray-400 text-xs">
                   {normalizedQuery
                     ? `Tidak ada kelompok yang cocok dengan "${searchQuery.trim()}".`
                     : filterFakultas === "all"
@@ -261,6 +263,19 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
           <select value={form.faculty} onChange={(e) => setForm((f) => ({ ...f, faculty: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary">
             {FACULTIES.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
+        </label>
+        <label className="block mb-3">
+          <div className="text-xs font-bold text-gray-500 mb-1.5">Mulai dihitung dalam monitoring</div>
+          <select
+            value={form.monitoringStartWeek}
+            onChange={(e) => setForm((f) => ({ ...f, monitoringStartWeek: Number(e.target.value) }))}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary"
+          >
+            {Array.from({ length: totalWeeks }, (_, index) => index + 1).map((week) => (
+              <option key={week} value={week}>Minggu {week}{week === currentWeek ? " (minggu berjalan)" : ""}</option>
+            ))}
+          </select>
+          <div className="text-[11px] text-gray-400 mt-1">Minggu sebelum tanggal ini tidak masuk hitungan peringatan.</div>
         </label>
         <div className="mb-3">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Mentor Pembimbing (maks. 2 per kelompok)</div>

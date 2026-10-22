@@ -39,6 +39,7 @@ async function AdminDashboard({ name }: { name: string }) {
       select: {
         id: true,
         name: true,
+        monitoringStartWeek: true,
         mentor: { select: { name: true } },
         mentorAssignments: { select: { mentor: { select: { name: true } } } },
         pertemuan: { where: { week: { lte: week } }, select: { week: true, status: true, date: true, time: true } },
@@ -60,6 +61,7 @@ async function AdminDashboard({ name }: { name: string }) {
     kelompokAktif.map((k) => ({
       id: k.id,
       name: k.name,
+      monitoringStartWeek: k.monitoringStartWeek,
       mentorNames: k.mentorAssignments.length
         ? k.mentorAssignments.map((assignment) => assignment.mentor.name)
         : k.mentor?.name ? [k.mentor.name] : [],

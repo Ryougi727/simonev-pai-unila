@@ -11,10 +11,10 @@ export default async function AdminKelompokPage() {
   const user = session?.user as any;
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
 
-  const [kelompok, mentors, praktikan] = await Promise.all([
+  const [kelompok, mentors, praktikan, kalender] = await Promise.all([
     prisma.kelompok.findMany({
       select: {
-        id: true, name: true, faculty: true, mentorId: true,
+        id: true, name: true, faculty: true, mentorId: true, monitoringStartWeek: true,
         mentor: { select: { name: true } },
         mentorAssignments: { select: { mentorId: true, mentor: { select: { name: true } } } },
         _count: { select: { praktikan: true } },
@@ -30,6 +30,10 @@ export default async function AdminKelompokPage() {
       select: { id: true, npm: true, name: true, kelompokId: true },
       orderBy: { name: "asc" },
     }),
+    prisma.kalenderPraktikum.findUnique({
+      where: { id: "singleton" },
+      select: { currentWeek: true, totalMinggu: true },
+    }),
   ]);
 
   return (
@@ -38,12 +42,15 @@ export default async function AdminKelompokPage() {
       <KelompokClient
         kelompok={kelompok.map((k) => ({
           id: k.id, name: k.name, faculty: k.faculty,
+          monitoringStartWeek: k.monitoringStartWeek,
           mentorIds: k.mentorAssignments.length ? k.mentorAssignments.map((a) => a.mentorId) : (k.mentorId ? [k.mentorId] : []),
           mentorNames: k.mentorAssignments.length ? k.mentorAssignments.map((a) => a.mentor.name) : (k.mentor?.name ? [k.mentor.name] : []),
           praktikanCount: k._count.praktikan,
         }))}
         mentors={mentors.map((m) => ({ id: m.id, name: m.name }))}
         praktikan={praktikan.map((p) => ({ id: p.id, npm: p.npm, name: p.name, kelompokId: p.kelompokId }))}
+        currentWeek={kalender?.currentWeek ?? 1}
+        totalWeeks={kalender?.totalMinggu ?? 8}
       />
     </div>
   );
