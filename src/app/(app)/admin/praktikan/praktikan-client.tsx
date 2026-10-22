@@ -3,7 +3,8 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { Plus, Upload, Trash2, X, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Upload, Trash2, X, FileSpreadsheet, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { SearchableSelect } from "@/components/searchable-select";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
 
@@ -24,6 +25,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   const { confirm, dialog } = useConfirmDialog();
   const refresh = () => router.refresh();
 
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterK, setFilterK] = useState("all");
   const [filterFakultas, setFilterFakultas] = useState("all");
   const [pageSize, setPageSize] = useState(10);
@@ -41,9 +43,15 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
     filterK === "all" ? fakultasList :
     filterK === "none" ? fakultasList.filter((p) => !p.kelompokId) :
     fakultasList.filter((p) => p.kelompokId === filterK);
-  const totalPages = Math.max(1, Math.ceil(groupFilteredList.length / pageSize));
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase("id");
+  const filteredPraktikanList = normalizedQuery
+    ? groupFilteredList.filter((p) =>
+        p.name.toLocaleLowerCase("id").includes(normalizedQuery) || p.npm.toLowerCase().includes(normalizedQuery)
+      )
+    : groupFilteredList;
+  const totalPages = Math.max(1, Math.ceil(filteredPraktikanList.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = groupFilteredList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageRows = filteredPraktikanList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ npm: "", name: "", fakultas: DEFAULT_FAKULTAS, jurusan: "", prodi: "", kelompokId: "" });
@@ -151,6 +159,17 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex flex-wrap gap-2">
+          <label className="relative block w-56">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              placeholder="Cari nama atau NPM…"
+              aria-label="Cari nama atau NPM praktikan"
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
+            />
+          </label>
           <select
             value={filterFakultas}
             onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); }}
@@ -160,16 +179,19 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
             <option value="all">Semua Fakultas</option>
             {fakultasFilterOptions.map((fakultas) => <option key={fakultas} value={fakultas}>{fakultas}</option>)}
           </select>
-          <select
+          <SearchableSelect
+            options={[
+              { value: "all", label: "Semua Kelompok" },
+              { value: "none", label: "Belum Berkelompok" },
+              ...kelompok.map((k) => ({ value: k.id, label: k.name })),
+            ]}
             value={filterK}
-            onChange={(e) => { setFilterK(e.target.value); setPage(1); }}
-            aria-label="Filter kelompok"
-            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
-          >
-            <option value="all">Semua Kelompok</option>
-            <option value="none">Belum Berkelompok</option>
-            {kelompok.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-          </select>
+            onChange={(value) => { setFilterK(value); setPage(1); }}
+            placeholder="Filter kelompok"
+            searchPlaceholder="Cari kelompok…"
+            ariaLabel="Filter kelompok"
+            className="w-56"
+          />
         </div>
         <div className="flex gap-2">
           <button onClick={() => { setImportError(""); setImportRows([]); setImportOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2">
@@ -215,10 +237,12 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
                 </td>
               </tr>
             ))}
-            {!groupFilteredList.length && (
+            {!filteredPraktikanList.length && (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-gray-400 text-xs">
-                  {filterFakultas !== "all" && !fakultasList.length
+                  {normalizedQuery
+                    ? `Tidak ada praktikan yang cocok dengan "${searchQuery.trim()}".`
+                    : filterFakultas !== "all" && !fakultasList.length
                     ? `Belum ada data praktikan untuk Fakultas ${filterFakultas}.`
                     : "Tidak ada praktikan untuk filter ini."}
                 </td>
@@ -239,8 +263,8 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
               {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
             <span>
-              {groupFilteredList.length
-                ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, groupFilteredList.length)} dari ${groupFilteredList.length} praktikan`
+              {filteredPraktikanList.length
+                ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredPraktikanList.length)} dari ${filteredPraktikanList.length} praktikan`
                 : "0 praktikan"}
             </span>
           </div>
@@ -294,10 +318,18 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
         </label>
         <label className="block">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Kelompok (opsional)</div>
-          <select value={addForm.kelompokId} onChange={(e) => setAddForm((f) => ({ ...f, kelompokId: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent outline-none focus:border-primary">
-            <option value="">Belum ditentukan</option>
-            {kelompok.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-          </select>
+          <SearchableSelect
+            options={[
+              { value: "", label: "Belum ditentukan" },
+              ...kelompok.map((k) => ({ value: k.id, label: k.name })),
+            ]}
+            value={addForm.kelompokId}
+            onChange={(kelompokId) => setAddForm((form) => ({ ...form, kelompokId }))}
+            placeholder="Belum ditentukan"
+            searchPlaceholder="Cari kelompok…"
+            ariaLabel="Kelompok praktikan"
+            className="w-full"
+          />
           <div className="text-[11px] text-gray-400 mt-1">Bisa juga di-assign belakangan lewat Manajemen Kelompok.</div>
         </label>
         <div className="flex justify-end gap-2 mt-4">

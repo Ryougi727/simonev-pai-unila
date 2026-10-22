@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, X, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Sparkles, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { SearchableMultiSelect } from "@/components/searchable-multi-select";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
@@ -18,6 +18,7 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
   const refresh = () => router.refresh();
   const { confirm, dialog } = useConfirmDialog();
 
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterFakultas, setFilterFakultas] = useState("all");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
@@ -27,9 +28,11 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
       .filter((faculty) => !FACULTIES.includes(faculty))
       .sort((a, b) => a.localeCompare(b, "id")),
   ];
-  const filteredKelompok = filterFakultas === "all"
-    ? kelompok
-    : kelompok.filter((k) => k.faculty === filterFakultas);
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase("id");
+  const filteredKelompok = kelompok.filter((k) =>
+    (filterFakultas === "all" || k.faculty === filterFakultas) &&
+    (!normalizedQuery || k.name.toLocaleLowerCase("id").includes(normalizedQuery))
+  );
   const totalPages = Math.max(1, Math.ceil(filteredKelompok.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filteredKelompok.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -127,15 +130,28 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
   return (
     <div>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-        <select
-          value={filterFakultas}
-          onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); }}
-          aria-label="Filter fakultas"
-          className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
-        >
-          <option value="all">Semua Fakultas</option>
-          {fakultasOptions.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <label className="relative block w-56">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              placeholder="Cari nama kelompok…"
+              aria-label="Cari nama kelompok"
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <select
+            value={filterFakultas}
+            onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); }}
+            aria-label="Filter fakultas"
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
+          >
+            <option value="all">Semua Fakultas</option>
+            {fakultasOptions.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
+          </select>
+        </div>
         <div className="flex flex-wrap justify-end gap-2">
           <button onClick={openGenerate} className="flex items-center gap-1.5 text-xs font-bold border border-primary/40 text-primary dark:text-primary-dark rounded-lg px-3 py-2">
             <Sparkles size={14} /> Generate Kelompok
@@ -178,7 +194,9 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
             {!filteredKelompok.length && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-xs">
-                  {filterFakultas === "all"
+                  {normalizedQuery
+                    ? `Tidak ada kelompok yang cocok dengan "${searchQuery.trim()}".`
+                    : filterFakultas === "all"
                     ? "Belum ada kelompok."
                     : `Belum ada data kelompok untuk Fakultas ${filterFakultas}.`}
                 </td>

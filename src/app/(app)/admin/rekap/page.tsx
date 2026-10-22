@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { Download } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TablePagination } from "@/components/table-pagination";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 type Mode = "kelompok" | "mentor" | "fakultas";
 
-export default async function AdminRekapPage({ searchParams }: { searchParams: { mode?: string; page?: string; pageSize?: string } }) {
+export default async function AdminRekapPage({ searchParams }: { searchParams: { mode?: string; page?: string; pageSize?: string; q?: string } }) {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
@@ -19,6 +19,7 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
   const pageSizeValue = Number(searchParams.pageSize);
   const pageSize = [10, 20, 50].includes(pageSizeValue) ? pageSizeValue : 10;
   const requestedPage = Math.max(1, Math.floor(Number(searchParams.page) || 1));
+  const searchQuery = (searchParams.q || "").trim();
 
   const kalender = await prisma.kalenderPraktikum.findUnique({
     where: { id: "singleton" },
@@ -60,17 +61,42 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
     }
     rows = Array.from(map.values());
   }
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const normalizedQuery = searchQuery.toLocaleLowerCase("id");
+  const filteredRows = normalizedQuery
+    ? rows.filter((row) =>
+        row.label.toLocaleLowerCase("id").includes(normalizedQuery) ||
+        row.faculty.toLocaleLowerCase("id").includes(normalizedQuery)
+      )
+    : rows;
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const page = Math.min(requestedPage, totalPages);
-  const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
+  const pageRows = filteredRows.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="font-display text-2xl font-semibold">Rekapitulasi</h1>
-        <a href={`/api/admin/rekap/export?mode=${mode}`} className="flex items-center gap-1.5 text-xs font-bold bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark rounded-lg px-3 py-2">
-          <Download size={14} /> Export Excel (.csv)
-        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <form method="GET" className="flex gap-2">
+            <input type="hidden" name="mode" value={mode} />
+            <input type="hidden" name="pageSize" value={pageSize} />
+            <label className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                type="search"
+                name="q"
+                defaultValue={searchQuery}
+                placeholder="Cari nama atau fakultas…"
+                aria-label="Cari nama atau fakultas"
+                className="w-56 pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
+              />
+            </label>
+            <button type="submit" className="px-3 py-2 rounded-lg bg-primary text-white text-sm font-semibold">Cari</button>
+          </form>
+          <a href={`/api/admin/rekap/export?mode=${mode}`} className="flex items-center gap-1.5 text-xs font-bold bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark rounded-lg px-3 py-2">
+            <Download size={14} /> Export Excel (.csv)
+          </a>
+        </div>
       </div>
       <div className="flex gap-2 mb-4">
         {([["kelompok", "Per Kelompok"], ["mentor", "Per Mentor"], ["fakultas", "Per Fakultas"]] as [Mode, string][]).map(([m, label]) => {
@@ -80,13 +106,13 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
           return mode === m ? (
             <span key={m} aria-current="page" className={className}>{label}</span>
           ) : (
-            <DataLoadingLink key={m} href={`/admin/rekap?mode=${m}&pageSize=${pageSize}`} className={className}>
+            <DataLoadingLink key={m} href={`/admin/rekap?mode=${m}&pageSize=${pageSize}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}`} className={className}>
               {label}
             </DataLoadingLink>
           );
         })}
       </div>
-      <TableLoadingRegion loadingKey={`${mode}:${page}:${pageSize}`} columns={4}>
+      <TableLoadingRegion loadingKey={`${mode}:${searchQuery}:${page}:${pageSize}`} columns={4}>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
@@ -114,8 +140,8 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
                 </tr>
               );
             })}
-            {!rows.length && (
-              <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400 text-xs">Belum ada data untuk direkap.</td></tr>
+            {!filteredRows.length && (
+              <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400 text-xs">{searchQuery ? `Tidak ada data yang cocok dengan "${searchQuery}".` : "Belum ada data untuk direkap."}</td></tr>
             )}
           </tbody>
         </table>
@@ -124,8 +150,8 @@ export default async function AdminRekapPage({ searchParams }: { searchParams: {
           basePath="/admin/rekap"
           page={page}
           pageSize={pageSize}
-          totalItems={rows.length}
-          query={{ mode }}
+          totalItems={filteredRows.length}
+          query={{ mode, ...(searchQuery ? { q: searchQuery } : {}) }}
           itemLabel={mode === "kelompok" ? "kelompok" : mode === "mentor" ? "mentor" : "fakultas"}
           showDataSkeleton
         />

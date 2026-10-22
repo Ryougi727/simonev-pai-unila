@@ -10,10 +10,11 @@ import { MeetingSummary } from "@/components/meeting-summary";
 import { MeetingWarningsSection } from "@/components/meeting-warnings";
 import { TableLoadingRegion } from "@/components/data-loading";
 import { getMeetingWarnings } from "@/lib/meeting-warnings";
+import { Search } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminMonitoringPage({ searchParams }: { searchParams: { week?: string; page?: string; pageSize?: string; faculty?: string } }) {
+export default async function AdminMonitoringPage({ searchParams }: { searchParams: { week?: string; page?: string; pageSize?: string; faculty?: string; q?: string } }) {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user || user.role !== "ADMIN") redirect("/dashboard");
@@ -28,6 +29,7 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
   const pageSize = [10, 20, 50].includes(pageSizeValue) ? pageSizeValue : 10;
   const requestedPage = Math.max(1, Math.floor(Number(searchParams.page) || 1));
   const faculty = searchParams.faculty || "all";
+  const searchQuery = (searchParams.q || "").trim();
 
   const kelompok = await prisma.kelompok.findMany({
     where: {
@@ -42,9 +44,12 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
     },
     orderBy: { name: "asc" },
   });
-  const totalPages = Math.max(1, Math.ceil(kelompok.length / pageSize));
+  const filteredKelompok = searchQuery
+    ? kelompok.filter((k) => k.name.toLocaleLowerCase("id").includes(searchQuery.toLocaleLowerCase("id")))
+    : kelompok;
+  const totalPages = Math.max(1, Math.ceil(filteredKelompok.length / pageSize));
   const page = Math.min(requestedPage, totalPages);
-  const pageRows = kelompok.slice((page - 1) * pageSize, page * pageSize);
+  const pageRows = filteredKelompok.slice((page - 1) * pageSize, page * pageSize);
   const summaryRows = kelompok.map((k) => {
     const meeting = k.pertemuan.find((record) => record.week === week) ?? null;
     return {
@@ -78,18 +83,38 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="font-display text-2xl font-semibold">Monitoring Pelaksanaan</h1>
-        <WeekPicker
-          totalMinggu={totalMinggu}
-          active={week}
-          basePath="/admin/monitoring"
-          pageSize={pageSize}
-          faculty={faculty}
-          showFacultyFilter
-          showDataSkeleton
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <form method="GET" className="flex gap-2">
+            <input type="hidden" name="week" value={week} />
+            <input type="hidden" name="pageSize" value={pageSize} />
+            {faculty !== "all" && <input type="hidden" name="faculty" value={faculty} />}
+            <label className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                type="search"
+                name="q"
+                defaultValue={searchQuery}
+                placeholder="Cari kelompok…"
+                aria-label="Cari kelompok"
+                className="w-48 pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
+              />
+            </label>
+            <button type="submit" className="px-3 py-2 rounded-lg bg-primary text-white text-sm font-semibold">Cari</button>
+          </form>
+          <WeekPicker
+            totalMinggu={totalMinggu}
+            active={week}
+            basePath="/admin/monitoring"
+            pageSize={pageSize}
+            faculty={faculty}
+            searchQuery={searchQuery}
+            showFacultyFilter
+            showDataSkeleton
+          />
+        </div>
       </div>
       <MeetingSummary week={week} completedCount={completedCount} pendingGroups={pendingGroups} />
-      <TableLoadingRegion loadingKey={`${week}:${faculty}:${page}:${pageSize}`} columns={5}>
+      <TableLoadingRegion loadingKey={`${week}:${faculty}:${searchQuery}:${page}:${pageSize}`} columns={5}>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
@@ -116,10 +141,12 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
                 </tr>
               );
             })}
-            {!kelompok.length && (
+            {!filteredKelompok.length && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-xs">
-                  {faculty === "all" ? "Tidak ada kelompok untuk ditampilkan." : `Belum ada kelompok untuk Fakultas ${faculty}.`}
+                  {searchQuery
+                    ? `Tidak ada kelompok yang cocok dengan "${searchQuery}".`
+                    : faculty === "all" ? "Tidak ada kelompok untuk ditampilkan." : `Belum ada kelompok untuk Fakultas ${faculty}.`}
                 </td>
               </tr>
             )}
@@ -130,8 +157,8 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
           basePath="/admin/monitoring"
           page={page}
           pageSize={pageSize}
-          totalItems={kelompok.length}
-          query={{ week: String(week), ...(faculty !== "all" ? { faculty } : {}) }}
+          totalItems={filteredKelompok.length}
+          query={{ week: String(week), ...(faculty !== "all" ? { faculty } : {}), ...(searchQuery ? { q: searchQuery } : {}) }}
           itemLabel="kelompok"
           showDataSkeleton
         />

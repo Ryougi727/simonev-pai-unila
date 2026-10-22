@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, X } from "lucide-react";
+import { SearchableSelect } from "@/components/searchable-select";
 import { resizeImageToBlob } from "@/lib/image";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
@@ -121,8 +122,14 @@ export function DokumentasiClient({ maxPhotos, kelompokList }: { maxPhotos: numb
 
 function KelompokSelect({ kelompokList, activeId, onChange }: { kelompokList: Kelompok[]; activeId: string; onChange: (id: string) => void }) {
   return (
-    <select value={activeId} onChange={(e) => onChange(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-44">
-      {kelompokList.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-    </select>
+    <SearchableSelect
+      options={kelompokList.map((k) => ({ value: k.id, label: k.name }))}
+      value={activeId}
+      onChange={onChange}
+      placeholder="Pilih kelompok"
+      searchPlaceholder="Cari kelompok…"
+      ariaLabel="Pilih kelompok"
+      className="w-44"
+    />
   );
 }

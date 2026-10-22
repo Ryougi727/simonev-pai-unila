@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { SearchableSelect } from "@/components/searchable-select";
 
 type Pertemuan = { id: string; week: number; photos: string[] };
 type Kelompok = { id: string; name: string; pertemuan: Pertemuan[] };
 
 export function PJDokumentasiClient({ kelompokList }: { kelompokList: Kelompok[] }) {
-  const [activeKId, setActiveKId] = useState(kelompokList[0]?.id);
+  const [activeKId, setActiveKId] = useState(kelompokList[0]?.id ?? "");
   const kelompok = kelompokList.find((k) => k.id === activeKId);
   const [activePId, setActivePId] = useState(kelompok?.pertemuan[0]?.id);
   const pertemuan = kelompok?.pertemuan.find((p) => p.id === activePId) || kelompok?.pertemuan[0];
@@ -16,13 +17,15 @@ export function PJDokumentasiClient({ kelompokList }: { kelompokList: Kelompok[]
   return (
     <div>
       <div className="flex gap-2 mb-4">
-        <select
+        <SearchableSelect
+          options={kelompokList.map((k) => ({ value: k.id, label: k.name }))}
           value={activeKId}
-          onChange={(e) => { setActiveKId(e.target.value); const kl = kelompokList.find((k) => k.id === e.target.value); setActivePId(kl?.pertemuan[0]?.id); }}
-          className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-48"
-        >
-          {kelompokList.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-        </select>
+          onChange={(id) => { setActiveKId(id); const kl = kelompokList.find((k) => k.id === id); setActivePId(kl?.pertemuan[0]?.id); }}
+          placeholder="Pilih kelompok"
+          searchPlaceholder="Cari kelompok…"
+          ariaLabel="Pilih kelompok"
+          className="w-48"
+        />
         {kelompok && kelompok.pertemuan.length > 0 && (
           <select value={activePId} onChange={(e) => setActivePId(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-36">
             {kelompok.pertemuan.map((p) => <option key={p.id} value={p.id}>Minggu {p.week}</option>)}

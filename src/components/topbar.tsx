@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { Search, Bell, Menu, Loader2, LogOut, KeyRound, UserRound } from "lucide-react";
+import { Bell, Menu, LogOut, KeyRound, UserRound } from "lucide-react";
 import { ThemeSwitcher } from "../../components/theme-switcher";
 import { EmergencyUnlockButton } from "./emergency-unlock";
 
 const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", PJ: "PJ Fakultas", MENTOR: "Mentor" };
-
-type SearchResult = { type: string; label: string; sublabel: string; href: string };
 
 export function Topbar({
   role, faculty, name, photoUrl, hasRecentPengumuman, onOpenMobileMenu,
@@ -17,37 +15,8 @@ export function Topbar({
   role: string; faculty?: string; name: string; photoUrl?: string | null;
   hasRecentPengumuman?: boolean; onOpenMobileMenu?: () => void;
 }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-
-  const runSearch = useCallback(async (q: string) => {
-    if (q.trim().length < 2) { setResults([]); setSearching(false); return; }
-    setSearching(true);
-    try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      setResults(data.results || []);
-    } catch { /* ignore */ }
-    setSearching(false);
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => runSearch(query), 300);
-    return () => clearTimeout(t);
-  }, [query, runSearch]);
-
-  useEffect(() => {
-    const onClickOutside = (e: MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setShowResults(false);
-    };
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -70,50 +39,12 @@ export function Topbar({
         <Menu size={20} />
       </button>
 
-      <div ref={boxRef} className="hidden sm:flex items-center flex-1 max-w-md relative">
-        <Search size={16} className="absolute left-3.5 text-on-surface-variant pointer-events-none" />
-        <input
-          type="search"
-          name="global-search"
-          autoComplete="off"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setShowResults(true); }}
-          onFocus={() => setShowResults(true)}
-          placeholder="Cari kelompok, praktikan, atau pengguna…"
-          className="w-full bg-surface-container-highest/60 rounded-full pl-10 pr-4 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/70 outline-none"
-        />
-        {searching && <Loader2 size={14} className="absolute right-3.5 animate-spin text-on-surface-variant" />}
-
-        {showResults && query.trim().length >= 2 && (
-          <div className="absolute top-full mt-1.5 w-full bg-surface border border-outline-variant/40 rounded-xl shadow-lg max-h-80 overflow-y-auto">
-            {results.length ? (
-              results.map((r, i) => (
-                <Link
-                  key={i}
-                  href={r.href}
-                  onClick={() => { setShowResults(false); setQuery(""); }}
-                  className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-container-high text-sm border-b border-outline-variant/20 last:border-0"
-                >
-                  <div className="min-w-0">
-                    <div className="text-on-surface font-semibold truncate">{r.label}</div>
-                    <div className="text-on-surface-variant text-xs truncate">{r.sublabel}</div>
-                  </div>
-                  <span className="text-[10px] font-bold text-primary dark:text-primary-dark bg-primary/10 dark:bg-primary-dark/10 px-2 py-0.5 rounded-full shrink-0 ml-2">{r.type}</span>
-                </Link>
-              ))
-            ) : (
-              !searching && <div className="px-4 py-4 text-xs text-on-surface-variant text-center">Tidak ada hasil.</div>
-            )}
-          </div>
-        )}
-      </div>
-
       <div className="sm:hidden min-w-0">
         <div className="text-[11px] font-semibold text-on-surface-variant truncate">{ROLE_LABEL[role]}{faculty ? ` · ${faculty}` : ""}</div>
         <div className="font-display text-sm font-bold text-on-surface truncate">Assalamu&apos;alaikum, {name.split(" ")[0]}</div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
         <ThemeSwitcher />
         <Link href="/pengumuman" className="relative p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors">
           <Bell size={17} />
