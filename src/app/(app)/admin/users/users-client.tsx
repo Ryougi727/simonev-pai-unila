@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { Plus, Upload, Pencil, Download, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Upload, Pencil, Download, Copy, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
 
@@ -14,6 +14,13 @@ type UserRow = {
 };
 type Role = "MENTOR" | "PJ";
 type ImportRow = { name: string; faculty: string; email: string };
+type Credential = { name: string; username: string; password: string };
+type BulkResult = {
+  role: Role;
+  source: "import" | "reset";
+  created: Credential[];
+  skipped: { name: string; reason: string }[];
+};
 
 const FACULTIES = ["FMIPA", "Teknik", "Ekonomi & Bisnis", "Hukum", "Pertanian", "ISIP", "KIP", "Kedokteran"];
 const ROLE_LABEL: Record<Role, string> = { MENTOR: "Mentor", PJ: "PJ Fakultas" };
@@ -23,6 +30,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   const { confirm, dialog } = useConfirmDialog();
   const [tab, setTab] = useState<Role>("MENTOR");
   const [filterFakultas, setFilterFakultas] = useState("all");
+  const [filterLogin, setFilterLogin] = useState("all");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const mentorFacultyOptions = [
@@ -32,11 +40,14 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       .sort((a, b) => a.localeCompare(b, "id")),
   ];
   const list = tab === "MENTOR" ? mentors : pjs;
-  const filteredList = tab === "MENTOR" && filterFakultas !== "all"
+  const facultyFilteredList = tab === "MENTOR" && filterFakultas !== "all"
     ? filterFakultas === "unassigned"
       ? list.filter((mentor) => !mentor.mentoredFaculties.length)
       : list.filter((mentor) => mentor.mentoredFaculties.includes(filterFakultas))
     : list;
+  const filteredList = filterLogin === "never"
+    ? facultyFilteredList.filter((user) => user.mustChangePassword)
+    : facultyFilteredList;
   const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filteredList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -56,7 +67,8 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
-  const [bulkResult, setBulkResult] = useState<{ created: { name: string; username: string; password: string }[]; skipped: { name: string; reason: string }[] } | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
+  const [resettingBulkCredentials, setResettingBulkCredentials] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = () => router.refresh();
@@ -180,25 +192,77 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
 
   const submitImport = async () => {
     setImporting(true);
-    const res = await fetch("/api/admin/users/bulk-import", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: tab, rows: importRows }),
-    });
-    const data = await res.json();
-    setImporting(false);
-    if (!res.ok) { setImportError(data.error || "Gagal mengimpor."); return; }
-    setImportOpen(false);
-    setImportRows([]);
-    setBulkResult(data);
-    refresh();
+    try {
+      const res = await fetch("/api/admin/users/bulk-import", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: tab, rows: importRows }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setImportError(data.error || "Gagal mengimpor."); return; }
+      setImportOpen(false);
+      setImportRows([]);
+      setBulkResult({ ...data, role: tab, source: "import" });
+    } catch {
+      setImportError("Gagal mengimpor. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadCredentials = (credentials: Credential[], role: Role) => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(credentials.map((c) => ({ Nama: c.name, Username: c.username, Password: c.password })));
+    XLSX.utils.book_append_sheet(wb, ws, "Kredensial");
+    XLSX.writeFile(wb, `kredensial-${ROLE_LABEL[role].toLowerCase().replace(" ", "-")}-${Date.now()}.xlsx`);
   };
 
   const downloadBulkCredentials = () => {
+    if (bulkResult) downloadCredentials(bulkResult.created, bulkResult.role);
+  };
+
+  const copyBulkCredentials = async () => {
     if (!bulkResult) return;
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(bulkResult.created.map((c) => ({ Nama: c.name, Username: c.username, Password: c.password })));
-    XLSX.utils.book_append_sheet(wb, ws, "Kredensial");
-    XLSX.writeFile(wb, `kredensial-${ROLE_LABEL[tab].toLowerCase().replace(" ", "-")}-${Date.now()}.xlsx`);
+    const text = [
+      "Nama\tUsername\tPassword",
+      ...bulkResult.created.map((credential) => `${credential.name}\t${credential.username}\t${credential.password}`),
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      alert("Gagal menyalin — unduh file Excel untuk menyimpan kredensial.");
+    }
+  };
+
+  const resetFilteredCredentials = async () => {
+    const ok = await confirm({
+      title: `Buat ulang password ${filteredList.length} akun ${ROLE_LABEL[tab].toLowerCase()}?`,
+      message: "Akun yang masih berstatus belum login / belum mengganti password awal pada hasil filter ini akan diberi password sementara baru. Password lama langsung tidak berlaku dan tidak dapat dipulihkan.",
+      confirmLabel: "Buat Password Baru",
+    });
+    if (!ok) return;
+
+    setResettingBulkCredentials(true);
+    try {
+      const res = await fetch("/api/admin/users/bulk-reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: tab, userIds: filteredList.map((user) => user.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Gagal membuat ulang kredensial."); return; }
+      setBulkResult({ ...data, role: tab, source: "reset" });
+    } catch {
+      alert("Gagal membuat ulang kredensial. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setResettingBulkCredentials(false);
+    }
+  };
+
+  const closeBulkResult = () => {
+    setBulkResult(null);
+    refresh();
   };
 
   return (
@@ -223,6 +287,25 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
               <option value="unassigned">Belum Ditugaskan</option>
               {mentorFacultyOptions.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
             </select>
+          )}
+          <select
+            value={filterLogin}
+            onChange={(e) => { setFilterLogin(e.target.value); setPage(1); }}
+            aria-label="Filter status login"
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
+          >
+            <option value="all">Semua Status Login</option>
+            <option value="never">Belum login / password awal belum diganti</option>
+          </select>
+          {tab === "MENTOR" && filterLogin === "never" && filteredList.length > 0 && (
+            <button
+              onClick={resetFilteredCredentials}
+              disabled={resettingBulkCredentials}
+              className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2 disabled:opacity-60"
+            >
+              {resettingBulkCredentials ? <ActionSpinner /> : <Download size={14} />}
+              Buat Ulang Kredensial ({filteredList.length})
+            </button>
           )}
           <button onClick={() => { setImportError(""); setImportRows([]); setImportOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2">
             <Upload size={14} /> Impor Excel
@@ -291,7 +374,9 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
             {!filteredList.length && (
               <tr>
                 <td colSpan={tab === "MENTOR" ? 6 : 5} className="px-4 py-10 text-center text-gray-400 text-xs">
-                  {tab === "MENTOR" && filterFakultas === "unassigned"
+                  {filterLogin === "never"
+                    ? "Tidak ada pengguna yang belum pernah login."
+                    : tab === "MENTOR" && filterFakultas === "unassigned"
                     ? "Tidak ada mentor yang belum ditugaskan membina kelompok."
                     : tab === "MENTOR" && filterFakultas !== "all"
                       ? `Belum ada mentor yang membina Fakultas ${filterFakultas}.`
@@ -419,16 +504,23 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       </Modal>
 
       {/* Bulk result modal */}
-      <Modal open={!!bulkResult} onClose={() => setBulkResult(null)} title="Impor Selesai" width={480}>
+      <Modal open={!!bulkResult} onClose={closeBulkResult} title={bulkResult?.source === "reset" ? "Kredensial Siap" : "Impor Selesai"} width={480}>
         {bulkResult && (
           <div>
             <p className="text-sm text-gray-500 mb-3">
-              <b>{bulkResult.created.length}</b> akun berhasil dibuat{bulkResult.skipped.length ? `, ${bulkResult.skipped.length} dilewati` : ""}.
-              Download daftar kredensial di bawah untuk disampaikan ke masing-masing {ROLE_LABEL[tab].toLowerCase()} — password hanya tersedia sekali ini saja.
+              <b>{bulkResult.created.length}</b> {bulkResult.source === "reset" ? "password berhasil dibuat ulang" : "akun berhasil dibuat"}{bulkResult.skipped.length ? `, ${bulkResult.skipped.length} dilewati` : ""}.
+              Unduh file Excel atau salin kredensial sekarang; password tidak dapat diambil kembali setelah jendela ditutup.
             </p>
-            <button onClick={downloadBulkCredentials} className="w-full flex items-center justify-center gap-2 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-lg py-2.5 mb-3">
-              <Download size={15} /> Download Kredensial (.xlsx)
-            </button>
+            {bulkResult.created.length > 0 && (
+              <>
+                <button onClick={downloadBulkCredentials} className="w-full flex items-center justify-center gap-2 text-sm font-semibold bg-primary hover:bg-primary-hover text-white rounded-lg py-2.5 mb-2">
+                  <Download size={15} /> Download Kredensial (.xlsx)
+                </button>
+                <button onClick={copyBulkCredentials} className="w-full flex items-center justify-center gap-2 text-sm font-semibold bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark rounded-lg py-2.5 mb-3">
+                  <Copy size={15} /> {copied ? "Tersalin!" : "Salin Semua Kredensial"}
+                </button>
+              </>
+            )}
             {bulkResult.skipped.length > 0 && (
               <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-lg p-2.5">
                 Dilewati: {bulkResult.skipped.map((s) => `${s.name} (${s.reason})`).join(", ")}
