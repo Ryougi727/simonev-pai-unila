@@ -11,6 +11,7 @@ import { MeetingWarningsSection } from "@/components/meeting-warnings";
 import { TableLoadingRegion } from "@/components/data-loading";
 import { getMeetingWarnings } from "@/lib/meeting-warnings";
 import { Search } from "lucide-react";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -118,7 +119,9 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
               const status = statusForPertemuan(rec ?? null);
               return (
                 <tr key={k.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
-                  <td className="px-4 py-2.5 font-semibold">{k.name}</td>
+                  <td className="px-4 py-2.5 font-semibold">
+                    <Link href={`/kelompok/${k.id}`} className="hover:text-primary dark:hover:text-primary-dark">{k.name}</Link>
+                  </td>
                   <td className="px-4 py-2.5">{k.mentorAssignments.length ? k.mentorAssignments.map((a) => a.mentor.name).join(", ") : k.mentor?.name || "-"}</td>
                   <td className="px-4 py-2.5">{rec ? `${rec.date.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}, ${rec.time}` : "-"}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={status} /></td>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, X, RotateCcw } from "lucide-react";
 import { statusForPertemuan } from "@/lib/status";
@@ -66,6 +67,9 @@ export function JadwalClient({ totalMinggu, kelompokList }: { totalMinggu: numbe
           {kelompokList.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
         </select>
       )}
+      <Link href={`/kelompok/${kelompok.id}`} className="mb-4 inline-flex text-sm font-semibold text-primary dark:text-primary-dark hover:underline">
+        Lihat profil {kelompok.name}
+      </Link>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">

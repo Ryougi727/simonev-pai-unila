@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X, Sparkles, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { SearchableMultiSelect } from "@/components/searchable-multi-select";
@@ -177,7 +178,9 @@ export function KelompokClient({ kelompok, mentors, praktikan }: { kelompok: Kel
           <tbody>
             {pageRows.map((k) => (
               <tr key={k.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
-                <td className="px-4 py-2.5 font-semibold">{k.name}</td>
+                <td className="px-4 py-2.5 font-semibold">
+                  <Link href={`/kelompok/${k.id}`} className="hover:text-primary dark:hover:text-primary-dark">{k.name}</Link>
+                </td>
                 <td className="px-4 py-2.5">{k.faculty}</td>
                 <td className="px-4 py-2.5">{k.mentorNames.length ? k.mentorNames.join(", ") : <span className="text-gray-400">Belum ditentukan</span>}</td>
                 <td className="px-4 py-2.5">{k.praktikanCount} orang</td>
