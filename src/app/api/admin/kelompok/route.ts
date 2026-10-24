@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const mentorIds = [...new Set(Array.isArray(mentorId) ? mentorId.filter(Boolean) : mentorId ? [mentorId] : [])];
   if (mentorIds.length > 2) return NextResponse.json({ error: "Maksimal dua mentor per kelompok." }, { status: 400 });
   const selectedIds: string[] = Array.isArray(praktikanIds)
-    ? [...new Set(praktikanIds.filter((id: unknown): id is string => typeof id === "string" && id))]
+    ? [...new Set(praktikanIds.filter((id: unknown): id is string => typeof id === "string" && id.length > 0))]
     : [];
   const importRows: { npm: string; name: string }[] = Array.isArray(importedPraktikan) ? importedPraktikan : [];
   if (importRows.some((row) => typeof row?.npm !== "string" || typeof row?.name !== "string" || !row.npm.trim() || !row.name.trim())) {
