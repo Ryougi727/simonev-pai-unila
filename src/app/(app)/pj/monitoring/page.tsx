@@ -19,6 +19,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
   if (!user || user.role !== "PJ") redirect("/dashboard");
+  const faculty = typeof user.faculty === "string" ? user.faculty : "";
 
   const kalender = await prisma.kalenderPraktikum.findUnique({
     where: { id: "singleton" },
@@ -32,7 +33,7 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
   const searchQuery = (searchParams.q || "").trim();
 
   const kelompok = await prisma.kelompok.findMany({
-    where: { faculty: user.faculty, OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
+    where: { faculty, OR: [{ mentorId: { not: null } }, { mentorAssignments: { some: {} } }] },
     select: {
       id: true, name: true, monitoringStartWeek: true,
       mentor: { select: { name: true } },

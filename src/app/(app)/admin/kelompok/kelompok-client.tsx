@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, X, Sparkles, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import * as XLSX from "xlsx";
+import { Plus, Pencil, Trash2, X, Sparkles, ChevronLeft, ChevronRight, Search, Upload, FileSpreadsheet } from "lucide-react";
 import { SearchableMultiSelect } from "@/components/searchable-multi-select";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
@@ -11,6 +12,7 @@ import { ActionSpinner } from "@/components/action-spinner";
 type KelompokRow = { id: string; name: string; faculty: string; monitoringStartWeek: number; mentorIds: string[]; mentorNames: string[]; praktikanCount: number };
 type Mentor = { id: string; name: string };
 type Praktikan = { id: string; npm: string; name: string; kelompokId: string | null };
+type ImportedPraktikan = { id: string; npm: string; name: string };
 
 const FACULTIES = ["FMIPA", "Teknik", "Ekonomi & Bisnis", "Hukum", "Pertanian", "ISIP", "KIP", "Kedokteran"];
 
@@ -42,11 +44,18 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
   const [form, setForm] = useState({ name: "", faculty: FACULTIES[0], monitoringStartWeek: currentWeek, mentorIds: [] as string[], praktikanIds: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importedPraktikan, setImportedPraktikan] = useState<ImportedPraktikan[]>([]);
+  const [importReport, setImportReport] = useState<{ added: number; errors: string[] } | null>(null);
+  const [saveError, setSaveError] = useState("");
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const assignedMentorIds = new Set(kelompok.flatMap((k) => k.mentorIds));
 
   const openAdd = () => {
     setForm({ name: "", faculty: FACULTIES[0], monitoringStartWeek: currentWeek, mentorIds: [], praktikanIds: [] });
+    setImportedPraktikan([]);
+    setImportReport(null);
+    setSaveError("");
     setModal({ mode: "add" });
   };
   const openEdit = (k: KelompokRow) => {
@@ -68,17 +77,107 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
 
   const submit = async () => {
     if (!form.name.trim()) { alert("Nama kelompok wajib diisi."); return; }
+    setSaveError("");
     setSaving(true);
     const url = modal?.mode === "edit" ? `/api/admin/kelompok/${modal.k!.id}` : "/api/admin/kelompok";
     const method = modal?.mode === "edit" ? "PATCH" : "POST";
-    const res = await fetch(url, {
-      method, headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, faculty: form.faculty, monitoringStartWeek: form.monitoringStartWeek, mentorId: form.mentorIds, praktikanIds: form.praktikanIds }),
-    });
-    setSaving(false);
-    if (!res.ok) { const d = await res.json(); alert(d.error || "Gagal menyimpan."); return; }
-    setModal(null);
-    refresh();
+    const selectedImports = modal?.mode === "add"
+      ? importedPraktikan.filter((student) => form.praktikanIds.includes(student.id)).map(({ npm, name }) => ({ npm, name }))
+      : [];
+    try {
+      const res = await fetch(url, {
+        method, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: form.name, faculty: form.faculty, monitoringStartWeek: form.monitoringStartWeek, mentorId: form.mentorIds, praktikanIds: form.praktikanIds, importedPraktikan: selectedImports }),
+      });
+      const responseText = await res.text();
+      let data: { error?: string } = {};
+      try {
+        data = JSON.parse(responseText) as { error?: string };
+      } catch {
+        if (!res.ok) data.error = responseText || `Server gagal menyimpan (HTTP ${res.status}).`;
+      }
+      if (!res.ok) {
+        setSaveError(data.error || `Gagal menyimpan kelompok (HTTP ${res.status}).`);
+        return;
+      }
+      setModal(null);
+      refresh();
+    } catch {
+      setSaveError("Tidak dapat menghubungi server. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const downloadImportTemplate = () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([["NPM", "Nama"]]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Praktikan");
+    XLSX.writeFile(workbook, "template-praktikan-kelompok.xlsx");
+  };
+
+  const onImportFileChosen = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const errors: string[] = [];
+    const matched: ImportedPraktikan[] = [];
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!sheet) {
+        setImportReport({ added: 0, errors: ["File Excel tidak memiliki sheet yang dapat dibaca."] });
+        return;
+      }
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: true });
+      const seenNpms = new Set<string>();
+      for (const [index, row] of rows.entries()) {
+        const values = Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [key.trim().toLocaleLowerCase("id"), String(value ?? "").trim()])
+        );
+        const npm = values.npm ?? "";
+        const name = values.nama ?? values.name ?? "";
+        if (!npm && !name) continue;
+        const rowNumber = index + 2;
+        if (!npm || !name) {
+          errors.push(`Baris ${rowNumber}: NPM dan nama wajib diisi.`);
+          continue;
+        }
+        if (seenNpms.has(npm)) {
+          errors.push(`Baris ${rowNumber}: NPM ${npm} duplikat di file.`);
+          continue;
+        }
+        seenNpms.add(npm);
+        const student = praktikan.find((candidate) => candidate.npm.trim() === npm);
+        if (!student) {
+          errors.push(`Baris ${rowNumber}: NPM ${npm} tidak terdaftar.`);
+          continue;
+        }
+        if (student.name.trim().replace(/\s+/g, " ").toLocaleLowerCase("id") !== name.replace(/\s+/g, " ").toLocaleLowerCase("id")) {
+          errors.push(`Baris ${rowNumber}: nama untuk NPM ${npm} tidak sesuai data praktikan.`);
+          continue;
+        }
+        if (student.kelompokId && student.kelompokId !== modal?.k?.id) {
+          errors.push(`Baris ${rowNumber}: ${name} sudah terdaftar di kelompok lain.`);
+          continue;
+        }
+        matched.push({ id: student.id, npm: student.npm, name: student.name });
+      }
+      if (!rows.length) errors.push("Tidak ada data praktikan pada sheet pertama.");
+      if (rows.length && !matched.length && !errors.length) errors.push("Tidak ada baris NPM dan Nama yang dapat diimpor.");
+
+      const importedById = new Map(importedPraktikan.map((student) => [student.id, student]));
+      matched.forEach((student) => importedById.set(student.id, student));
+      setImportedPraktikan(Array.from(importedById.values()));
+      setForm((currentForm) => ({
+        ...currentForm,
+        praktikanIds: Array.from(new Set([...currentForm.praktikanIds, ...matched.map((student) => student.id)])),
+      }));
+      setImportReport({ added: matched.length, errors });
+    } catch {
+      setImportReport({ added: 0, errors: ["Gagal membaca file. Pastikan formatnya .xlsx, .xls, atau .csv."] });
+    } finally {
+      event.target.value = "";
+    }
   };
 
   const remove = async (k: KelompokRow) => {
@@ -292,6 +391,31 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
         </div>
         <div className="mb-1">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Praktikan dalam Kelompok</div>
+          {modal?.mode === "add" && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => importFileRef.current?.click()}
+                className="flex items-center gap-1.5 rounded-lg border border-[#dcefe2] px-3 py-2 text-xs font-semibold dark:border-[#1d3527]"
+              >
+                <Upload size={14} /> Impor Excel
+              </button>
+              <button
+                type="button"
+                onClick={downloadImportTemplate}
+                className="flex items-center gap-1.5 rounded-lg border border-[#dcefe2] px-3 py-2 text-xs font-semibold dark:border-[#1d3527]"
+              >
+                <FileSpreadsheet size={14} /> Unduh Template
+              </button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={onImportFileChosen}
+                className="hidden"
+              />
+            </div>
+          )}
           <SearchableMultiSelect
             options={praktikanOptions}
             selectedIds={form.praktikanIds}
@@ -301,6 +425,17 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
             emptyText="Tidak ada praktikan yang bisa dipilih."
           />
           <div className="text-[11px] text-gray-400 mt-1">Hanya praktikan yang belum berkelompok (atau sudah di kelompok ini) yang muncul di sini.</div>
+          {modal?.mode === "add" && importReport && (
+            <div className="mt-2 rounded-lg bg-gray-50 p-2.5 text-xs dark:bg-white/5">
+              <p className="font-semibold">{importReport.added} praktikan cocok dan masuk ke pilihan.</p>
+              {importReport.errors.length > 0 && (
+                <ul className="mt-1 max-h-28 list-inside list-disc space-y-0.5 overflow-y-auto text-amber-700 dark:text-amber-400">
+                  {importReport.errors.map((error, index) => <li key={`${index}-${error}`}>{error}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+          {saveError && <p role="alert" className="mt-2 text-xs font-semibold text-red-600">{saveError}</p>}
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button onClick={() => setModal(null)} className="text-sm font-semibold border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2">Batal</button>

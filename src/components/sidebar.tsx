@@ -35,6 +35,7 @@ const MENUS: Record<string, MenuItem[]> = {
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/pengumuman", label: "Pengumuman", icon: Megaphone },
     { href: "/pj/monitoring", label: "Monitoring Mentor", icon: ClipboardList, group: "Akademik" },
+    { href: "/pj/praktikan", label: "Praktikan Fakultas", icon: GraduationCap, group: "Akademik" },
     { href: "/pj/berita", label: "Berita Acara", icon: FileText, group: "Akademik" },
     { href: "/pj/dokumentasi", label: "Dokumentasi", icon: ImageIcon, group: "Akademik" },
   ],
