@@ -25,6 +25,7 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
   const [filterFakultas, setFilterFakultas] = useState("all");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const fakultasOptions = [
     ...FACULTIES,
     ...Array.from(new Set(kelompok.map((k) => k.faculty)))
@@ -39,6 +40,27 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
   const totalPages = Math.max(1, Math.ceil(filteredKelompok.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filteredKelompok.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const selectedGroupSet = new Set(selectedGroupIds);
+  const allPageGroupsSelected = pageRows.length > 0 && pageRows.every((group) => selectedGroupSet.has(group.id));
+
+  const toggleGroupSelection = (id: string) => {
+    setSelectedGroupIds((current) =>
+      current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id]
+    );
+  };
+  const togglePageGroupSelection = () => {
+    const pageIds = pageRows.map((group) => group.id);
+    setSelectedGroupIds((current) =>
+      allPageGroupsSelected
+        ? current.filter((id) => !pageIds.includes(id))
+        : Array.from(new Set([...current, ...pageIds]))
+    );
+  };
+
+  const [bulkWeekOpen, setBulkWeekOpen] = useState(false);
+  const [bulkWeek, setBulkWeek] = useState(currentWeek);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [bulkUpdateError, setBulkUpdateError] = useState("");
 
   const [modal, setModal] = useState<{ mode: "add" | "edit"; k?: KelompokRow } | null>(null);
   const [form, setForm] = useState({ name: "", faculty: FACULTIES[0], monitoringStartWeek: currentWeek, mentorIds: [] as string[], praktikanIds: [] as string[] });
@@ -48,6 +70,39 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
   const [importReport, setImportReport] = useState<{ added: number; errors: string[] } | null>(null);
   const [saveError, setSaveError] = useState("");
   const importFileRef = useRef<HTMLInputElement>(null);
+
+  const submitBulkMonitoringWeek = async () => {
+    setBulkUpdateError("");
+    const selectedGroups = filteredKelompok.filter((group) => selectedGroupSet.has(group.id));
+    const selectedNames = selectedGroups.slice(0, 8).map((group) => group.name).join(", ");
+    const confirmed = await confirm({
+      title: `Ubah minggu mulai monitoring untuk ${selectedGroups.length} kelompok?`,
+      message: `Kelompok berikut akan mulai dihitung dalam monitoring dari minggu ${bulkWeek}: ${selectedNames}${selectedGroups.length > 8 ? `, dan ${selectedGroups.length - 8} kelompok lainnya` : ""}. Perubahan ini dapat memengaruhi peringatan monitoring.`,
+      confirmLabel: "Ubah Minggu Monitoring",
+    });
+    if (!confirmed) return;
+
+    setBulkUpdating(true);
+    try {
+      const response = await fetch("/api/admin/kelompok/bulk-monitoring-week", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedGroupIds, monitoringStartWeek: bulkWeek }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setBulkUpdateError(data.error || "Gagal mengubah minggu monitoring.");
+        return;
+      }
+      setBulkWeekOpen(false);
+      setSelectedGroupIds([]);
+      refresh();
+    } catch {
+      setBulkUpdateError("Tidak dapat menghubungi server. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
 
   const assignedMentorIds = new Set(kelompok.flatMap((k) => k.mentorIds));
 
@@ -240,7 +295,7 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
             <input
               type="search"
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); setSelectedGroupIds([]); }}
               placeholder="Cari nama kelompok…"
               aria-label="Cari nama kelompok"
               className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
@@ -248,7 +303,7 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
           </label>
           <select
             value={filterFakultas}
-            onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); }}
+            onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); setSelectedGroupIds([]); }}
             aria-label="Filter fakultas"
             className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
           >
@@ -267,10 +322,32 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
       </div>
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
+        {selectedGroupIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-[#dcefe2] px-4 py-3 text-xs dark:border-[#1d3527]">
+            <span className="font-semibold">{selectedGroupIds.length} kelompok dipilih</span>
+            {filteredKelompok.length > pageRows.length && selectedGroupIds.length < filteredKelompok.length && (
+              <button
+                type="button"
+                disabled={filteredKelompok.length > 500}
+                onClick={() => setSelectedGroupIds(filteredKelompok.map((group) => group.id))}
+                className="font-bold text-primary disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-dark"
+              >
+                {filteredKelompok.length > 500 ? "Persempit hasil (maksimal 500 kelompok)" : `Pilih semua ${filteredKelompok.length} hasil pencarian/filter`}
+              </button>
+            )}
+            <button type="button" onClick={() => { setBulkWeek(currentWeek); setBulkUpdateError(""); setBulkWeekOpen(true); }} disabled={selectedGroupIds.length > 500} className="rounded-lg bg-primary px-3 py-1.5 font-bold text-white disabled:opacity-50">
+              Ubah minggu mulai monitoring
+            </button>
+            <button type="button" onClick={() => setSelectedGroupIds([])} className="ml-auto text-gray-500 underline">Tidak pilih semua</button>
+          </div>
+        )}
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[700px] text-sm">
           <thead>
             <tr className="text-[11px] uppercase text-gray-400 text-left">
+              <th className="px-4 py-2.5">
+                <input type="checkbox" checked={allPageGroupsSelected} onChange={togglePageGroupSelection} aria-label="Pilih semua kelompok di halaman ini" />
+              </th>
               <th className="px-4 py-2.5 font-bold">Kelompok</th>
               <th className="px-4 py-2.5 font-bold">Fakultas</th>
               <th className="px-4 py-2.5 font-bold">Mentor</th>
@@ -282,6 +359,9 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
           <tbody>
             {pageRows.map((k) => (
               <tr key={k.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
+                <td className="px-4 py-2.5">
+                  <input type="checkbox" checked={selectedGroupSet.has(k.id)} onChange={() => toggleGroupSelection(k.id)} aria-label={`Pilih kelompok ${k.name}`} />
+                </td>
                 <td className="px-4 py-2.5 font-semibold">
                   <Link href={`/kelompok/${k.id}`} className="hover:text-primary dark:hover:text-primary-dark">{k.name}</Link>
                 </td>
@@ -301,7 +381,7 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
             ))}
             {!filteredKelompok.length && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-gray-400 text-xs">
+                <td colSpan={7} className="px-4 py-10 text-center text-gray-400 text-xs">
                   {normalizedQuery
                     ? `Tidak ada kelompok yang cocok dengan "${searchQuery.trim()}".`
                     : filterFakultas === "all"
@@ -353,6 +433,29 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
           </div>
         </div>
       </div>
+
+      <Modal open={bulkWeekOpen} onClose={() => setBulkWeekOpen(false)} title="Ubah Minggu Monitoring Massal">
+        <p className="mb-3 text-sm text-gray-500">{selectedGroupIds.length} kelompok dipilih.</p>
+        <label className="mb-3 block">
+          <div className="mb-1.5 text-xs font-bold text-gray-500">Minggu mulai monitoring</div>
+          <select
+            value={bulkWeek}
+            onChange={(event) => setBulkWeek(Number(event.target.value))}
+            className="w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 outline-none focus:border-primary dark:border-gray-700"
+          >
+            {Array.from({ length: totalWeeks }, (_, index) => index + 1).map((week) => (
+              <option key={week} value={week}>Minggu {week}{week === currentWeek ? " (minggu berjalan)" : ""}</option>
+            ))}
+          </select>
+        </label>
+        {bulkUpdateError && <p role="alert" className="mb-3 text-xs font-semibold text-red-600">{bulkUpdateError}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={() => setBulkWeekOpen(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold dark:border-gray-700">Batal</button>
+          <button type="button" onClick={submitBulkMonitoringWeek} disabled={bulkUpdating} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+            {bulkUpdating ? <><ActionSpinner /> Menyimpan…</> : "Lanjutkan"}
+          </button>
+        </div>
+      </Modal>
 
       {/* Add/Edit modal */}
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.mode === "edit" ? "Edit Kelompok" : "Tambah Kelompok"} width={520}>

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     where: { id: { in: requestedIds } },
     select: { id: true, name: true, username: true, role: true, mustChangePassword: true },
   });
-  const eligibleUsers = users.filter((user) => user.role === role && user.mustChangePassword);
+  const eligibleUsers = users.filter((user) => user.role === role);
   const eligibleIds = new Set(eligibleUsers.map((user) => user.id));
   const skipped = requestedIds
     .filter((id) => !eligibleIds.has(id))
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       const user = users.find((item) => item.id === id);
       return {
         name: user?.name ?? "Akun tidak ditemukan",
-        reason: "Akun tidak lagi memenuhi filter belum login",
+        reason: user ? "Peran akun tidak sesuai dengan pilihan" : "Akun tidak ditemukan",
       };
     });
   const candidates: {
@@ -61,15 +61,15 @@ export async function POST(req: Request) {
 
     for (const candidate of candidates) {
       const update = await tx.user.updateMany({
-        where: { id: candidate.id, role, mustChangePassword: true },
-        data: { passwordHash: candidate.passwordHash },
+        where: { id: candidate.id, role },
+        data: { passwordHash: candidate.passwordHash, mustChangePassword: true },
       });
       if (update.count) {
         created.push({ name: candidate.name, username: candidate.username, password: candidate.password });
       } else {
         transactionSkipped.push({
           name: candidate.name,
-          reason: "Status akun berubah sebelum password diperbarui",
+          reason: "Akun berubah sebelum password diperbarui",
         });
       }
     }
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
         data: {
           entity: role === "MENTOR" ? "Mentor" : "PJ",
           action: "Reset Password Massal",
-          detail: `Membuat ulang password untuk ${created.length} akun ${role === "MENTOR" ? "mentor" : "PJ"}.`,
+          detail: `Admin membuat ulang password untuk ${created.length} akun ${role === "MENTOR" ? "mentor" : "PJ"}.`,
           userId: admin.id,
         },
       });

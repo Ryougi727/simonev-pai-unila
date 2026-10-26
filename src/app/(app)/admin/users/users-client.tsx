@@ -34,6 +34,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   const [filterLogin, setFilterLogin] = useState("all");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const mentorFacultyOptions = [
     ...FACULTIES,
     ...Array.from(new Set(mentors.flatMap((mentor) => mentor.mentoredFaculties)))
@@ -59,6 +60,22 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filteredList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const selectedUserSet = new Set(selectedUserIds);
+  const allPageUsersSelected = pageRows.length > 0 && pageRows.every((user) => selectedUserSet.has(user.id));
+
+  const toggleUserSelection = (id: string) => {
+    setSelectedUserIds((current) =>
+      current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id]
+    );
+  };
+  const togglePageUserSelection = () => {
+    const pageIds = pageRows.map((user) => user.id);
+    setSelectedUserIds((current) =>
+      allPageUsersSelected
+        ? current.filter((id) => !pageIds.includes(id))
+        : Array.from(new Set([...current, ...pageIds]))
+    );
+  };
 
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", email: "", faculty: FACULTIES[0] });
@@ -114,6 +131,12 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
 
   /* ---------- reset password / toggle active ---------- */
   const resetPassword = async (u: UserRow) => {
+    const ok = await confirm({
+      title: `Reset password akun "${u.name}"?`,
+      message: "Password lama akan langsung tidak berlaku. Password sementara hanya akan ditampilkan sekarang dan akun wajib menggantinya saat login.",
+      confirmLabel: "Reset Password",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/${u.id}/reset-password`, { method: "POST" });
     const data = await res.json();
     if (!res.ok) { alert("Gagal reset password."); return; }
@@ -243,10 +266,13 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
     }
   };
 
-  const resetFilteredCredentials = async () => {
+  const resetSelectedCredentials = async () => {
+    const selectedUsers = filteredList.filter((user) => selectedUserSet.has(user.id));
+    if (!selectedUsers.length) return;
+    const selectedNames = selectedUsers.slice(0, 8).map((user) => user.name).join(", ");
     const ok = await confirm({
-      title: `Buat ulang password ${filteredList.length} akun ${ROLE_LABEL[tab].toLowerCase()}?`,
-      message: "Akun yang masih berstatus belum login / belum mengganti password awal pada hasil filter ini akan diberi password sementara baru. Password lama langsung tidak berlaku dan tidak dapat dipulihkan.",
+      title: `Buat ulang password ${selectedUsers.length} akun ${ROLE_LABEL[tab].toLowerCase()}?`,
+      message: `Password akun berikut akan langsung diganti dan tidak dapat dipulihkan: ${selectedNames}${selectedUsers.length > 8 ? `, dan ${selectedUsers.length - 8} akun lainnya` : ""}. Password sementara hanya dapat dilihat dan diunduh sekarang, lalu wajib diganti saat login.`,
       confirmLabel: "Buat Password Baru",
     });
     if (!ok) return;
@@ -256,11 +282,12 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       const res = await fetch("/api/admin/users/bulk-reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: tab, userIds: filteredList.map((user) => user.id) }),
+        body: JSON.stringify({ role: tab, userIds: selectedUsers.map((user) => user.id) }),
       });
       const data = await res.json();
       if (!res.ok) { alert(data.error || "Gagal membuat ulang kredensial."); return; }
       setBulkResult({ ...data, role: tab, source: "reset" });
+      setSelectedUserIds([]);
     } catch {
       alert("Gagal membuat ulang kredensial. Periksa koneksi lalu coba lagi.");
     } finally {
@@ -282,7 +309,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
             <input
               type="search"
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); setSelectedUserIds([]); }}
               placeholder="Cari nama, username, fakultas…"
               aria-label="Cari pengguna berdasarkan nama, username, email, atau fakultas"
               className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
@@ -290,7 +317,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
           </label>
           <div className="flex gap-2">
             {(["MENTOR", "PJ"] as Role[]).map((r) => (
-              <button key={r} onClick={() => { setTab(r); setFilterFakultas("all"); setPage(1); }} className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${
+              <button key={r} onClick={() => { setTab(r); setFilterFakultas("all"); setPage(1); setSelectedUserIds([]); }} className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${
                 tab === r ? "bg-primary-soft dark:bg-primary-darkSoft border-primary text-primary-hover dark:text-primary-dark" : "border-[#dcefe2] dark:border-[#1d3527] text-gray-500"
               }`}>{ROLE_LABEL[r]}</button>
             ))}
@@ -300,7 +327,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
           {tab === "MENTOR" && (
             <select
               value={filterFakultas}
-              onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); }}
+              onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); setSelectedUserIds([]); }}
               aria-label="Filter fakultas binaan"
               className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
             >
@@ -311,23 +338,13 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
           )}
           <select
             value={filterLogin}
-            onChange={(e) => { setFilterLogin(e.target.value); setPage(1); }}
+            onChange={(e) => { setFilterLogin(e.target.value); setPage(1); setSelectedUserIds([]); }}
             aria-label="Filter status login"
             className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
           >
             <option value="all">Semua Status Login</option>
             <option value="never">Belum login / password awal belum diganti</option>
           </select>
-          {tab === "MENTOR" && filterLogin === "never" && filteredList.length > 0 && (
-            <button
-              onClick={resetFilteredCredentials}
-              disabled={resettingBulkCredentials}
-              className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2 disabled:opacity-60"
-            >
-              {resettingBulkCredentials ? <ActionSpinner /> : <Download size={14} />}
-              Buat Ulang Kredensial ({filteredList.length})
-            </button>
-          )}
           <button onClick={() => { setImportError(""); setImportRows([]); setImportOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2">
             <Upload size={14} /> Impor Excel
           </button>
@@ -338,10 +355,38 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       </div>
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
+        {selectedUserIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-[#dcefe2] px-4 py-3 text-xs dark:border-[#1d3527]">
+            <span className="font-semibold">{selectedUserIds.length} {ROLE_LABEL[tab].toLowerCase()} dipilih</span>
+            {filteredList.length > pageRows.length && selectedUserIds.length < filteredList.length && (
+              <button
+                type="button"
+                disabled={filteredList.length > 500}
+                onClick={() => setSelectedUserIds(filteredList.map((user) => user.id))}
+                className="font-bold text-primary disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-dark"
+              >
+                {filteredList.length > 500 ? "Persempit hasil (maksimal 500 akun)" : `Pilih semua ${filteredList.length} hasil pencarian/filter`}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={resetSelectedCredentials}
+              disabled={resettingBulkCredentials || selectedUserIds.length > 500}
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-bold text-white disabled:opacity-60"
+            >
+              {resettingBulkCredentials ? <ActionSpinner /> : <Download size={13} />}
+              {selectedUserIds.length > 500 ? "Batasi pilihan maksimal 500 akun" : "Buat ulang password terpilih"}
+            </button>
+            <button type="button" onClick={() => setSelectedUserIds([])} className="ml-auto text-gray-500 underline">Tidak pilih semua</button>
+          </div>
+        )}
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[940px] text-sm">
           <thead>
             <tr className="text-[11px] uppercase text-gray-400 text-left">
+              <th className="px-4 py-2.5">
+                <input type="checkbox" checked={allPageUsersSelected} onChange={togglePageUserSelection} aria-label="Pilih semua pengguna di halaman ini" />
+              </th>
               <th className="px-4 py-2.5 font-bold">Nama</th>
               <th className="px-4 py-2.5 font-bold">Username</th>
               {tab === "MENTOR" ? (
@@ -357,6 +402,9 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
           <tbody>
             {pageRows.map((u) => (
               <tr key={u.id} className="border-t border-[#dcefe2] dark:border-[#1d3527]">
+                <td className="px-4 py-2.5">
+                  <input type="checkbox" checked={selectedUserSet.has(u.id)} onChange={() => toggleUserSelection(u.id)} aria-label={`Pilih pengguna ${u.name}`} />
+                </td>
                 <td className="px-4 py-2.5 font-semibold">{u.name}</td>
                 <td className="px-4 py-2.5">
                   <code className="text-xs">{u.username}</code>
@@ -394,7 +442,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
             ))}
             {!filteredList.length && (
               <tr>
-                <td colSpan={tab === "MENTOR" ? 6 : 5} className="px-4 py-10 text-center text-gray-400 text-xs">
+                <td colSpan={tab === "MENTOR" ? 7 : 6} className="px-4 py-10 text-center text-gray-400 text-xs">
                   {normalizedQuery
                     ? `Tidak ada ${ROLE_LABEL[tab].toLowerCase()} yang cocok dengan "${searchQuery.trim()}".`
                     : filterLogin === "never"

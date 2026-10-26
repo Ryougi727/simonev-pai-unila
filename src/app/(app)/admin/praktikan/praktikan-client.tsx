@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { Plus, Upload, Trash2, X, FileSpreadsheet, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, Upload, Trash2, X, FileSpreadsheet, ChevronLeft, ChevronRight, Search, ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { SearchableSelect } from "@/components/searchable-select";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
@@ -30,6 +30,7 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   const [filterFakultas, setFilterFakultas] = useState("all");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<{ column: "jurusan" | "prodi"; direction: "asc" | "desc" } | null>(null);
   const fakultasFilterOptions = [
     ...FAKULTAS_OPTIONS,
     ...Array.from(new Set(praktikan.map((p) => p.fakultas)))
@@ -46,12 +47,41 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase("id");
   const filteredPraktikanList = normalizedQuery
     ? groupFilteredList.filter((p) =>
-        p.name.toLocaleLowerCase("id").includes(normalizedQuery) || p.npm.toLowerCase().includes(normalizedQuery)
+        [p.name, p.npm, p.fakultas, p.jurusan, p.prodi, p.kelompokName ?? ""]
+          .some((value) => value.toLocaleLowerCase("id").includes(normalizedQuery))
       )
     : groupFilteredList;
-  const totalPages = Math.max(1, Math.ceil(filteredPraktikanList.length / pageSize));
+  const sortedPraktikanList = sort
+    ? [...filteredPraktikanList].sort((a, b) => {
+        const result = a[sort.column].localeCompare(b[sort.column], "id", { numeric: true, sensitivity: "base" });
+        return sort.direction === "asc" ? result : -result;
+      })
+    : filteredPraktikanList;
+  const totalPages = Math.max(1, Math.ceil(sortedPraktikanList.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = filteredPraktikanList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageRows = sortedPraktikanList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const toggleSort = (column: "jurusan" | "prodi") => {
+    setSort((current) => ({
+      column,
+      direction: current?.column === column && current.direction === "asc" ? "desc" : "asc",
+    }));
+    setPage(1);
+  };
+  const renderSortButton = (column: "jurusan" | "prodi", label: string) => {
+    const active = sort?.column === column;
+    const SortIcon = !active ? ArrowUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(column)}
+        aria-label={`Urutkan ${label} ${active && sort.direction === "asc" ? "menurun" : "menaik"}`}
+        className="inline-flex items-center gap-1 hover:text-on-surface"
+      >
+        {label}
+        <SortIcon size={13} aria-hidden="true" />
+      </button>
+    );
+  };
 
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState({ npm: "", name: "", fakultas: DEFAULT_FAKULTAS, jurusan: "", prodi: "", kelompokId: "" });
@@ -165,8 +195,8 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
               type="search"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              placeholder="Cari nama atau NPM…"
-              aria-label="Cari nama atau NPM praktikan"
+              placeholder="Cari nama, NPM, jurusan…"
+              aria-label="Cari praktikan berdasarkan nama, NPM, fakultas, jurusan, prodi, atau kelompok"
               className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
             />
           </label>
@@ -205,14 +235,18 @@ export function PraktikanClient({ praktikan, kelompok }: { praktikan: PraktikanR
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[800px] text-sm">
+        <table className="w-full min-w-[840px] text-sm">
           <thead>
             <tr className="text-[11px] uppercase text-gray-400 text-left">
               <th className="px-4 py-2.5 font-bold">NPM</th>
               <th className="px-4 py-2.5 font-bold">Nama</th>
               <th className="px-4 py-2.5 font-bold">Fakultas</th>
-              <th className="px-4 py-2.5 font-bold">Jurusan</th>
-              <th className="px-4 py-2.5 font-bold">Prodi</th>
+              <th aria-sort={sort?.column === "jurusan" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-2.5 font-bold">
+                {renderSortButton("jurusan", "Jurusan")}
+              </th>
+              <th aria-sort={sort?.column === "prodi" ? (sort.direction === "asc" ? "ascending" : "descending") : "none"} className="px-4 py-2.5 font-bold">
+                {renderSortButton("prodi", "Prodi")}
+              </th>
               <th className="px-4 py-2.5 font-bold">Kelompok</th>
               <th className="px-4 py-2.5"></th>
             </tr>
