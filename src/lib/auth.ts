@@ -44,6 +44,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
+        token.loginAt = Date.now();
         token.role = (user as any).role;
         token.username = (user as any).username;
         token.faculty = (user as any).faculty;
@@ -62,6 +63,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).username = token.username;
         (session.user as any).faculty = token.faculty;
         (session.user as any).mustChangePassword = token.mustChangePassword;
+        (session.user as any).loginAt = token.loginAt;
       }
       return session;
     },

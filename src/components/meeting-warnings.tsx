@@ -1,6 +1,10 @@
 import type { MeetingWarnings, StalledGroup } from "@/lib/meeting-warnings";
 
 const severityStyles = {
+  early: {
+    title: "Peringatan Dini",
+    classes: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+  },
   yellow: {
     title: "Peringatan 1",
     classes: "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300",
@@ -29,6 +33,7 @@ function WarningList({ groups }: { groups: StalledGroup[] }) {
             Mentor: {group.mentorNames.length ? group.mentorNames.join(", ") : "Belum ditentukan"}
           </div>
           <div className="text-xs opacity-80">{group.missedMeetings} pertemuan berturut-turut belum terlaksana</div>
+          <div className="text-xs opacity-80">Minggu: {group.missedWeeks.join(", ")}</div>
         </li>
       ))}
     </ul>
@@ -39,7 +44,7 @@ export function MeetingWarningsSection({ warnings }: { warnings: MeetingWarnings
   return (
     <section aria-label="Peringatan kelompok macet" className="mt-6 mb-4">
       <h2 className="mb-2 text-sm font-bold text-on-surface">Peringatan Kelompok Macet</h2>
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {(Object.keys(severityStyles) as Array<keyof MeetingWarnings>).map((severity) => {
           const groups = warnings[severity];
           const style = severityStyles[severity];
@@ -53,7 +58,7 @@ export function MeetingWarningsSection({ warnings }: { warnings: MeetingWarnings
                 </span>
               </div>
               <p className="mt-1 text-xs opacity-80">
-                {severity === "yellow" ? "2" : severity === "orange" ? "3" : "Lebih dari 3"} pertemuan berturut-turut belum terlaksana
+                {severity === "early" ? "1" : severity === "yellow" ? "2" : severity === "orange" ? "3" : "4 atau lebih"} pertemuan berturut-turut belum terlaksana
               </p>
               <WarningList groups={groups} />
             </div>

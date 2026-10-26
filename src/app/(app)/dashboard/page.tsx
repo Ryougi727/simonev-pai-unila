@@ -9,8 +9,16 @@ import { prisma } from "@/lib/prisma";
 import { statusForPertemuan } from "@/lib/status";
 import { getMeetingWarnings } from "@/lib/meeting-warnings";
 import { StatusBadge } from "@/components/status-badge";
+import { MentorWarningDialog } from "@/components/mentor-warning-dialog";
 
 export const dynamic = "force-dynamic";
+
+const mentorWarningClasses = {
+  early: "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200",
+  yellow: "border-yellow-300 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200",
+  orange: "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-200",
+  red: "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200",
+} as const;
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -18,7 +26,7 @@ export default async function DashboardPage() {
 
   if (user.role === "ADMIN") return <AdminDashboard name={user.name} />;
   if (user.role === "PJ") return <PJDashboard faculty={user.faculty} name={user.name} />;
-  return <MentorDashboard userId={user.id} name={user.name} />;
+  return <MentorDashboard userId={user.id} name={user.name} loginAt={Number(user.loginAt) || 0} />;
 }
 
 /* ---------------------------------- ADMIN ---------------------------------- */
@@ -70,7 +78,7 @@ async function AdminDashboard({ name }: { name: string }) {
     week,
     week
   );
-  const warningCount = warnings.yellow.length + warnings.orange.length + warnings.red.length;
+  const warningCount = warnings.early.length + warnings.yellow.length + warnings.orange.length + warnings.red.length;
 
   return (
     <div className="space-y-6">
@@ -214,7 +222,7 @@ async function PJDashboard({ faculty, name }: { faculty?: string; name: string }
 }
 
 /* --------------------------------- MENTOR ----------------------------------- */
-async function MentorDashboard({ userId, name }: { userId: string; name: string }) {
+async function MentorDashboard({ userId, name, loginAt }: { userId: string; name: string; loginAt: number }) {
   const kalender = await prisma.kalenderPraktikum.findUnique({
     where: { id: "singleton" },
     select: { currentWeek: true, semester: true, tahunAkademik: true },
@@ -225,7 +233,7 @@ async function MentorDashboard({ userId, name }: { userId: string; name: string 
     prisma.kelompok.findMany({
       where: { OR: [{ mentorId: userId }, { mentorAssignments: { some: { mentorId: userId } } }] },
       select: {
-        name: true,
+        id: true, name: true, monitoringStartWeek: true,
         pertemuan: {
           orderBy: { week: "desc" },
           select: { id: true, week: true, date: true, time: true, location: true, status: true },
@@ -245,12 +253,30 @@ async function MentorDashboard({ userId, name }: { userId: string; name: string 
     );
   }
 
+  const mentorWarnings = getMeetingWarnings(
+    kelompokList.map((kelompok) => ({
+      id: kelompok.id,
+      name: kelompok.name,
+      monitoringStartWeek: kelompok.monitoringStartWeek,
+      mentorNames: [],
+      pertemuan: kelompok.pertemuan,
+    })),
+    week,
+    week
+  );
+  const warningGroups = [
+    ...mentorWarnings.early.map((group) => ({ ...group, severity: "early" as const })),
+    ...mentorWarnings.yellow.map((group) => ({ ...group, severity: "yellow" as const })),
+    ...mentorWarnings.orange.map((group) => ({ ...group, severity: "orange" as const })),
+    ...mentorWarnings.red.map((group) => ({ ...group, severity: "red" as const })),
+  ];
   const allPertemuan = kelompokList.flatMap((k) => k.pertemuan.map((p) => ({ ...p, kelompokName: k.name })));
   const nextUp = allPertemuan.find((p) => p.status === "TERJADWAL");
   const riwayat = [...allPertemuan].sort((a, b) => b.week - a.week).slice(0, 8);
 
   return (
     <div className="space-y-6">
+      <MentorWarningDialog userId={userId} loginAt={loginAt} groups={warningGroups} />
       <Hero
         kalender={kalender}
         title={<>Assalamu&apos;alaikum, <span className="neon-glitch text-primary dark:text-primary-dark" data-text={name.split(" ")[0]}>{name.split(" ")[0]}</span></>}
@@ -291,6 +317,15 @@ async function MentorDashboard({ userId, name }: { userId: string; name: string 
             ])}
           />
         ) : <EmptyRow text="Belum ada riwayat pertemuan." />}
+        {warningGroups.length > 0 && (
+          <div className="space-y-2 border-t border-outline-variant/30 p-4 sm:p-5">
+            {warningGroups.map((group) => (
+              <div key={group.id} className={`rounded-xl border p-3 text-sm ${mentorWarningClasses[group.severity]}`}>
+                <p className="font-semibold">{group.name} — Kamu memiliki jadwal pertemuan yang terlewat. Minggu {group.missedWeeks.join(", ")}.</p>
+              </div>
+            ))}
+          </div>
+        )}
       </Panel>
     </div>
   );

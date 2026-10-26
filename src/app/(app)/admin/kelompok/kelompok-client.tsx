@@ -61,6 +61,9 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
   const openEdit = (k: KelompokRow) => {
     const currentMembers = praktikan.filter((p) => p.kelompokId === k.id).map((p) => p.id);
     setForm({ name: k.name, faculty: k.faculty, monitoringStartWeek: k.monitoringStartWeek, mentorIds: k.mentorIds, praktikanIds: currentMembers });
+    setImportedPraktikan([]);
+    setImportReport(null);
+    setSaveError("");
     setModal({ mode: "edit", k });
   };
 
@@ -391,31 +394,29 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
         </div>
         <div className="mb-1">
           <div className="text-xs font-bold text-gray-500 mb-1.5">Praktikan dalam Kelompok</div>
-          {modal?.mode === "add" && (
-            <div className="mb-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => importFileRef.current?.click()}
-                className="flex items-center gap-1.5 rounded-lg border border-[#dcefe2] px-3 py-2 text-xs font-semibold dark:border-[#1d3527]"
-              >
-                <Upload size={14} /> Impor Excel
-              </button>
-              <button
-                type="button"
-                onClick={downloadImportTemplate}
-                className="flex items-center gap-1.5 rounded-lg border border-[#dcefe2] px-3 py-2 text-xs font-semibold dark:border-[#1d3527]"
-              >
-                <FileSpreadsheet size={14} /> Unduh Template
-              </button>
-              <input
-                ref={importFileRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={onImportFileChosen}
-                className="hidden"
-              />
-            </div>
-          )}
+          <div className="mb-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => importFileRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-lg border border-[#dcefe2] px-3 py-2 text-xs font-semibold dark:border-[#1d3527]"
+            >
+              <Upload size={14} /> Impor Excel
+            </button>
+            <button
+              type="button"
+              onClick={downloadImportTemplate}
+              className="flex items-center gap-1.5 rounded-lg border border-[#dcefe2] px-3 py-2 text-xs font-semibold dark:border-[#1d3527]"
+            >
+              <FileSpreadsheet size={14} /> Unduh Template
+            </button>
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={onImportFileChosen}
+              className="hidden"
+            />
+          </div>
           <SearchableMultiSelect
             options={praktikanOptions}
             selectedIds={form.praktikanIds}
@@ -425,7 +426,7 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
             emptyText="Tidak ada praktikan yang bisa dipilih."
           />
           <div className="text-[11px] text-gray-400 mt-1">Hanya praktikan yang belum berkelompok (atau sudah di kelompok ini) yang muncul di sini.</div>
-          {modal?.mode === "add" && importReport && (
+          {importReport && (
             <div className="mt-2 rounded-lg bg-gray-50 p-2.5 text-xs dark:bg-white/5">
               <p className="font-semibold">{importReport.added} praktikan cocok dan masuk ke pilihan.</p>
               {importReport.errors.length > 0 && (
@@ -497,7 +498,7 @@ export function KelompokClient({ kelompok, mentors, praktikan, currentWeek, tota
         )}
 
         <div className="text-[11px] text-gray-400 mb-4">
-          Contoh nama yang dihasilkan: <b>{genForm.prefix || "Kelompok"} {genForm.startNumber}</b>, <b>{genForm.prefix || "Kelompok"} {genForm.startNumber + 1}</b>, dst. Praktikan tidak di-assign di sini — lakukan lewat tombol Edit setelah kelompok dibuat.
+          Contoh nama yang dihasilkan: <b>{genForm.prefix || "Kelompok"} {genForm.startNumber}</b>, <b>{genForm.prefix || "Kelompok"} {genForm.startNumber + 1}</b>, dst. Setelah kelompok dibuat, pilih Edit untuk mengimpor Excel atau memilih praktikan.
         </div>
 
         <div className="flex justify-end gap-2">

@@ -20,52 +20,70 @@ export type StalledGroup = {
   name: string;
   mentorNames: string[];
   missedMeetings: number;
+  missedWeeks: number[];
 };
 
 export type MeetingWarnings = {
+  early: StalledGroup[];
   yellow: StalledGroup[];
   orange: StalledGroup[];
   red: StalledGroup[];
 };
+
+function getMonitoringStartWeek(group: GroupWithMeetings) {
+  const startWeek = group.monitoringStartWeek;
+  return typeof startWeek === "number" && Number.isInteger(startWeek) && startWeek >= 1 ? startWeek : 1;
+}
+
+export function getMissedMeetingWeeks(
+  group: GroupWithMeetings,
+  selectedWeek: number,
+  currentWeek: number
+): number[] {
+  const throughWeek = Math.min(selectedWeek, currentWeek - 1);
+  const meetingsByWeek = new Map(group.pertemuan.map((meeting) => [meeting.week, meeting]));
+  const missedWeeks: number[] = [];
+
+  for (let week = getMonitoringStartWeek(group); week <= throughWeek; week++) {
+    const meeting = meetingsByWeek.get(week);
+    const status = statusForPertemuan(meeting);
+    if (status === "belum_jadwal" || status === "belum_laksana") missedWeeks.push(week);
+  }
+
+  return missedWeeks;
+}
 
 export function getMeetingWarnings(
   groups: GroupWithMeetings[],
   selectedWeek: number,
   currentWeek: number
 ): MeetingWarnings {
-  const throughWeek = Math.min(selectedWeek, currentWeek);
-  const warnings: MeetingWarnings = { yellow: [], orange: [], red: [] };
+  const warnings: MeetingWarnings = { early: [], yellow: [], orange: [], red: [] };
 
   for (const group of groups) {
     const meetingsByWeek = new Map(group.pertemuan.map((meeting) => [meeting.week, meeting]));
-    let missedMeetings = 0;
-    const configuredStartWeek = group.monitoringStartWeek;
-    const monitoringStartWeek = typeof configuredStartWeek === "number" &&
-      Number.isInteger(configuredStartWeek) &&
-      configuredStartWeek >= 1
-      ? configuredStartWeek
-      : 1;
-
-    for (let week = monitoringStartWeek; week <= throughWeek; week++) {
+    let missedWeeks: number[] = [];
+    const throughWeek = Math.min(selectedWeek, currentWeek - 1);
+    for (let week = getMonitoringStartWeek(group); week <= throughWeek; week++) {
       const meeting = meetingsByWeek.get(week);
-
-      if (week === currentWeek && (!meeting || statusForPertemuan(meeting) === "terjadwal")) {
-        continue;
-      }
-
-      if (meeting?.status === "SELESAI") {
-        missedMeetings = 0;
-      } else {
-        missedMeetings++;
+      const status = statusForPertemuan(meeting);
+      if (status === "selesai") {
+        missedWeeks = [];
+      } else if (status === "belum_jadwal" || status === "belum_laksana") {
+        missedWeeks.push(week);
       }
     }
 
+    const missedMeetings = missedWeeks.length;
+    const warning = { ...group, missedMeetings, missedWeeks };
     if (missedMeetings >= 4) {
-      warnings.red.push({ ...group, missedMeetings });
+      warnings.red.push(warning);
     } else if (missedMeetings === 3) {
-      warnings.orange.push({ ...group, missedMeetings });
+      warnings.orange.push(warning);
     } else if (missedMeetings === 2) {
-      warnings.yellow.push({ ...group, missedMeetings });
+      warnings.yellow.push(warning);
+    } else if (missedMeetings === 1) {
+      warnings.early.push(warning);
     }
   }
 

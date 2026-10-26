@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/status-badge";
 import { statusForPertemuan } from "@/lib/status";
+import { getMeetingWarnings, getMissedMeetingWeeks } from "@/lib/meeting-warnings";
 
 export const dynamic = "force-dynamic";
 
@@ -44,13 +45,33 @@ export default async function KelompokProfilePage({ params }: { params: { id: st
 
   const kalender = await prisma.kalenderPraktikum.findUnique({
     where: { id: "singleton" },
-    select: { totalMinggu: true, tahunAkademik: true, semester: true },
+    select: { totalMinggu: true, currentWeek: true, tahunAkademik: true, semester: true },
   });
   const totalWeeks = kalender?.totalMinggu ?? 8;
+  const currentWeek = Math.min(kalender?.currentWeek ?? 1, totalWeeks);
   const mentors = kelompok.mentorAssignments.length
     ? kelompok.mentorAssignments.map((assignment) => assignment.mentor)
     : kelompok.mentor ? [kelompok.mentor] : [];
   const completedMeetings = kelompok.pertemuan.filter((meeting) => meeting.status === "SELESAI").length;
+  const warningInput = {
+    id: kelompok.id,
+    name: kelompok.name,
+    monitoringStartWeek: kelompok.monitoringStartWeek,
+    mentorNames: mentors.map((mentor) => mentor.name),
+    pertemuan: kelompok.pertemuan,
+  };
+  const missedWeeks = getMissedMeetingWeeks(warningInput, currentWeek, currentWeek);
+  const meetingWarnings = getMeetingWarnings([warningInput], currentWeek, currentWeek);
+  const currentWarning = meetingWarnings.red[0] ?? meetingWarnings.orange[0] ?? meetingWarnings.yellow[0] ?? meetingWarnings.early[0];
+  const warningStyle = currentWarning
+    ? currentWarning.missedMeetings >= 4
+      ? { title: "Peringatan 3", classes: "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200" }
+      : currentWarning.missedMeetings === 3
+        ? { title: "Peringatan 2", classes: "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-200" }
+        : currentWarning.missedMeetings === 2
+          ? { title: "Peringatan 1", classes: "border-yellow-300 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200" }
+          : { title: "Peringatan Dini", classes: "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200" }
+    : { title: "Catatan Pertemuan", classes: "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200" };
   const backHref = user.role === "ADMIN" ? "/admin/kelompok" : user.role === "PJ" ? "/pj/monitoring" : "/mentor/jadwal";
 
   return (
@@ -181,6 +202,18 @@ export default async function KelompokProfilePage({ params }: { params: { id: st
           <p className="px-5 py-8 text-center text-sm text-gray-400">Belum ada pertemuan untuk kelompok ini.</p>
         )}
       </section>
+
+      {missedWeeks.length > 0 && (
+        <section role="status" className={`rounded-2xl border p-4 ${warningStyle.classes}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">{warningStyle.title}: pertemuan belum terlaksana</h2>
+            {currentWarning && <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold dark:bg-black/20">{currentWarning.missedMeetings} minggu berturut-turut</span>}
+          </div>
+          <p className="mt-2 text-sm">
+            Kelompok ini belum melaksanakan pertemuan pada minggu ke-{missedWeeks.join(", ")}. Mohon tindak lanjuti jadwal pertemuan yang belum terlaksana.
+          </p>
+        </section>
+      )}
     </div>
   );
 }

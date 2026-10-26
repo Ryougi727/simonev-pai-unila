@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { Plus, Upload, Pencil, Download, Copy, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Upload, Pencil, Download, Copy, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
 
@@ -29,6 +29,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   const router = useRouter();
   const { confirm, dialog } = useConfirmDialog();
   const [tab, setTab] = useState<Role>("MENTOR");
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterFakultas, setFilterFakultas] = useState("all");
   const [filterLogin, setFilterLogin] = useState("all");
   const [pageSize, setPageSize] = useState(10);
@@ -45,9 +46,16 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       ? list.filter((mentor) => !mentor.mentoredFaculties.length)
       : list.filter((mentor) => mentor.mentoredFaculties.includes(filterFakultas))
     : list;
-  const filteredList = filterLogin === "never"
+  const loginFilteredList = filterLogin === "never"
     ? facultyFilteredList.filter((user) => user.mustChangePassword)
     : facultyFilteredList;
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase("id");
+  const filteredList = normalizedQuery
+    ? loginFilteredList.filter((user) =>
+        [user.name, user.username, user.email ?? "", user.faculty ?? "", ...user.mentoredFaculties]
+          .some((value) => value.toLocaleLowerCase("id").includes(normalizedQuery))
+      )
+    : loginFilteredList;
   const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filteredList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -268,12 +276,25 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div className="flex gap-2">
-          {(["MENTOR", "PJ"] as Role[]).map((r) => (
-            <button key={r} onClick={() => { setTab(r); setFilterFakultas("all"); setPage(1); }} className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${
-              tab === r ? "bg-primary-soft dark:bg-primary-darkSoft border-primary text-primary-hover dark:text-primary-dark" : "border-[#dcefe2] dark:border-[#1d3527] text-gray-500"
-            }`}>{ROLE_LABEL[r]}</button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative block w-56">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              placeholder="Cari nama, username, fakultas…"
+              aria-label="Cari pengguna berdasarkan nama, username, email, atau fakultas"
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <div className="flex gap-2">
+            {(["MENTOR", "PJ"] as Role[]).map((r) => (
+              <button key={r} onClick={() => { setTab(r); setFilterFakultas("all"); setPage(1); }} className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${
+                tab === r ? "bg-primary-soft dark:bg-primary-darkSoft border-primary text-primary-hover dark:text-primary-dark" : "border-[#dcefe2] dark:border-[#1d3527] text-gray-500"
+              }`}>{ROLE_LABEL[r]}</button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {tab === "MENTOR" && (
@@ -374,7 +395,9 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
             {!filteredList.length && (
               <tr>
                 <td colSpan={tab === "MENTOR" ? 6 : 5} className="px-4 py-10 text-center text-gray-400 text-xs">
-                  {filterLogin === "never"
+                  {normalizedQuery
+                    ? `Tidak ada ${ROLE_LABEL[tab].toLowerCase()} yang cocok dengan "${searchQuery.trim()}".`
+                    : filterLogin === "never"
                     ? "Tidak ada pengguna yang belum pernah login."
                     : tab === "MENTOR" && filterFakultas === "unassigned"
                     ? "Tidak ada mentor yang belum ditugaskan membina kelompok."
