@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.loginAt = Date.now();
@@ -50,9 +50,14 @@ export const authOptions: NextAuthOptions = {
         token.faculty = (user as any).faculty;
         token.mustChangePassword = (user as any).mustChangePassword;
       }
-      // allow the change-password flow to clear the flag without a full re-login
-      if (trigger === "update" && session?.mustChangePassword === false) {
-        token.mustChangePassword = false;
+      if (trigger === "update" && typeof token.id === "string") {
+        const currentUser = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: { mustChangePassword: true },
+        });
+        if (currentUser) {
+          token.mustChangePassword = currentUser.mustChangePassword;
+        }
       }
       return token;
     },

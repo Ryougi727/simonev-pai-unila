@@ -21,16 +21,25 @@ export default function ChangePasswordPage() {
     e.preventDefault();
     if (pw1.length < 6) { setError("Password minimal 6 karakter."); return; }
     if (pw1 !== pw2) { setError("Konfirmasi password tidak sama."); return; }
+    setError("");
     setLoading(true);
-    const res = await fetch("/api/account/change-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pw1 }),
-    });
-    setLoading(false);
-    if (!res.ok) { setError("Gagal menyimpan password. Coba lagi."); return; }
-    await update({ mustChangePassword: false });
-    router.push("/dashboard");
+    try {
+      const res = await fetch("/api/account/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw1 }),
+      });
+      if (!res.ok) {
+        setError("Gagal menyimpan password. Coba lagi.");
+        return;
+      }
+      await update();
+      router.replace("/dashboard");
+    } catch {
+      setError("Proses tidak dapat diselesaikan. Jika password sudah berubah, coba lagi untuk memperbarui sesi.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
