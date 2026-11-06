@@ -116,7 +116,12 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
           />
         </div>
       </div>
-      <MeetingSummary week={week} completedCount={completedCount} pendingGroups={pendingGroups} />
+      <MeetingSummary
+        week={week}
+        completedCount={completedCount}
+        pendingCount={pendingGroups.length}
+        pendingHref={`/admin/monitoring/belum-selesai?week=${week}${faculty !== "all" ? `&faculty=${encodeURIComponent(faculty)}` : ""}`}
+      />
       <TableLoadingRegion loadingKey={`${week}:${faculty}:${searchQuery}:${page}:${pageSize}`} columns={5}>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -169,7 +174,10 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
         />
       </div>
       </TableLoadingRegion>
-      <MeetingWarningsSection warnings={meetingWarnings} />
+      <MeetingWarningsSection
+        warnings={meetingWarnings}
+        pendingHref={`/admin/monitoring/kelompok-macet?week=${week}${faculty !== "all" ? `&faculty=${encodeURIComponent(faculty)}` : ""}`}
+      />
     </div>
   );
 }

@@ -103,7 +103,12 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
           <WeekPicker totalMinggu={totalMinggu} active={week} basePath="/pj/monitoring" pageSize={pageSize} searchQuery={searchQuery} showDataSkeleton />
         </div>
       </div>
-      <MeetingSummary week={week} completedCount={completedCount} pendingGroups={pendingGroups} />
+      <MeetingSummary
+        week={week}
+        completedCount={completedCount}
+        pendingCount={pendingGroups.length}
+        pendingHref={`/pj/monitoring/belum-selesai?week=${week}`}
+      />
       <TableLoadingRegion loadingKey={`${week}:${searchQuery}:${page}:${pageSize}`} columns={4}>
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -148,7 +153,10 @@ export default async function PJMonitoringPage({ searchParams }: { searchParams:
         />
       </div>
       </TableLoadingRegion>
-      <MeetingWarningsSection warnings={meetingWarnings} />
+      <MeetingWarningsSection
+        warnings={meetingWarnings}
+        pendingHref={`/pj/monitoring/kelompok-macet?week=${week}`}
+      />
     </div>
   );
 }

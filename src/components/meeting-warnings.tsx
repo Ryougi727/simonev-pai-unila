@@ -1,4 +1,6 @@
-import type { MeetingWarnings, StalledGroup } from "@/lib/meeting-warnings";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import type { MeetingWarnings } from "@/lib/meeting-warnings";
 
 const severityStyles = {
   early: {
@@ -19,31 +21,17 @@ const severityStyles = {
   },
 } as const;
 
-function WarningList({ groups }: { groups: StalledGroup[] }) {
-  if (!groups.length) {
-    return <p className="mt-3 text-xs opacity-75">Tidak ada kelompok.</p>;
-  }
+export function MeetingWarningsSection({ warnings, pendingHref }: { warnings: MeetingWarnings; pendingHref: string }) {
+  const totalGroups = Object.values(warnings).reduce((total, groups) => total + groups.length, 0);
 
-  return (
-    <ul className="mt-3 space-y-2">
-      {groups.map((group) => (
-        <li key={group.id} className="border-t border-current/15 pt-2 first:border-0 first:pt-0">
-          <div className="text-sm font-semibold">{group.name}</div>
-          <div className="text-xs opacity-80">
-            Mentor: {group.mentorNames.length ? group.mentorNames.join(", ") : "Belum ditentukan"}
-          </div>
-          <div className="text-xs opacity-80">{group.missedMeetings} pertemuan berturut-turut belum terlaksana</div>
-          <div className="text-xs opacity-80">Minggu: {group.missedWeeks.join(", ")}</div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-export function MeetingWarningsSection({ warnings }: { warnings: MeetingWarnings }) {
   return (
     <section aria-label="Peringatan kelompok macet" className="mt-6 mb-4">
-      <h2 className="mb-2 text-sm font-bold text-on-surface">Peringatan Kelompok Macet</h2>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-bold text-on-surface">Peringatan Kelompok Macet</h2>
+        <Link href={pendingHref} className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline dark:text-primary-dark">
+          Lihat daftar kelompok macet ({totalGroups}) <ArrowRight size={13} />
+        </Link>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {(Object.keys(severityStyles) as Array<keyof MeetingWarnings>).map((severity) => {
           const groups = warnings[severity];
@@ -60,7 +48,6 @@ export function MeetingWarningsSection({ warnings }: { warnings: MeetingWarnings
               <p className="mt-1 text-xs opacity-80">
                 {severity === "early" ? "1" : severity === "yellow" ? "2" : severity === "orange" ? "3" : "4 atau lebih"} pertemuan berturut-turut belum terlaksana
               </p>
-              <WarningList groups={groups} />
             </div>
           );
         })}

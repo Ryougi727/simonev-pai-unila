@@ -13,6 +13,7 @@ export function WeekPicker({
   pageSize,
   faculty,
   searchQuery,
+  warningSeverity,
   showFacultyFilter = false,
   showDataSkeleton = false,
 }: {
@@ -22,6 +23,7 @@ export function WeekPicker({
   pageSize?: number;
   faculty?: string;
   searchQuery?: string;
+  warningSeverity?: string;
   showFacultyFilter?: boolean;
   showDataSkeleton?: boolean;
 }) {
@@ -41,6 +43,7 @@ export function WeekPicker({
     if (pageSize) params.set("pageSize", String(pageSize));
     if (nextFaculty && nextFaculty !== "all") params.set("faculty", nextFaculty);
     if (searchQuery) params.set("q", searchQuery);
+    if (warningSeverity && warningSeverity !== "all") params.set("severity", warningSeverity);
     params.set("page", "1");
     if (next.week) setSelectedWeek(Number(next.week));
     if (next.faculty) setSelectedFaculty(next.faculty);

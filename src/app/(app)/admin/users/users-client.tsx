@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { Plus, Upload, Pencil, Download, Copy, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, Upload, Pencil, Download, Copy, X, FileSpreadsheet, Trash2, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
 import { useConfirmDialog } from "@/components/use-confirm-dialog";
 import { ActionSpinner } from "@/components/action-spinner";
 
@@ -22,8 +22,28 @@ type BulkResult = {
   skipped: { name: string; reason: string }[];
 };
 
-const FACULTIES = ["FMIPA", "Teknik", "Ekonomi & Bisnis", "Hukum", "Pertanian", "ISIP", "KIP", "Kedokteran"];
+const FACULTIES = ["FMIPA", "Teknik", "Ekonomi dan Bisnis", "Hukum", "Pertanian", "ISIP", "KIP", "Kedokteran"];
 const ROLE_LABEL: Record<Role, string> = { MENTOR: "Mentor", PJ: "PJ Fakultas" };
+const FACULTY_ALIASES: Record<string, string> = {
+  feb: "Ekonomi dan Bisnis",
+  "ekonomi dan bisnis": "Ekonomi dan Bisnis",
+  "fakultas ekonomi dan bisnis": "Ekonomi dan Bisnis",
+  fkip: "KIP",
+  kip: "KIP",
+  "fakultas keguruan dan ilmu pendidikan": "KIP",
+  ft: "Teknik",
+  teknik: "Teknik",
+  "fakultas teknik": "Teknik",
+};
+
+function normalizeFaculty(faculty: string) {
+  const key = faculty
+    .toLocaleLowerCase("id")
+    .replace(/&/g, " dan ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return FACULTY_ALIASES[key] ?? faculty.trim();
+}
 
 export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow[] }) {
   const router = useRouter();
@@ -31,7 +51,9 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   const [tab, setTab] = useState<Role>("MENTOR");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterFakultas, setFilterFakultas] = useState("all");
+  const [filterFakultasAsal, setFilterFakultasAsal] = useState("all");
   const [filterLogin, setFilterLogin] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -42,15 +64,30 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
       .sort((a, b) => a.localeCompare(b, "id")),
   ];
   const list = tab === "MENTOR" ? mentors : pjs;
+  const facultyAsalOptions = [
+    ...FACULTIES,
+    ...Array.from(new Set(list.map((user) => user.faculty ? normalizeFaculty(user.faculty) : null)
+      .filter((faculty): faculty is string => !!faculty)))
+      .filter((faculty) => !FACULTIES.includes(faculty))
+      .sort((a, b) => a.localeCompare(b, "id")),
+  ];
+  const facultyAsalFilteredList = filterFakultasAsal === "unassigned"
+    ? list.filter((user) => !user.faculty)
+    : filterFakultasAsal !== "all"
+      ? list.filter((user) => user.faculty !== null && normalizeFaculty(user.faculty) === filterFakultasAsal)
+      : list;
   const facultyFilteredList = tab === "MENTOR" && filterFakultas !== "all"
     ? filterFakultas === "unassigned"
-      ? list.filter((mentor) => !mentor.mentoredFaculties.length)
-      : list.filter((mentor) => mentor.mentoredFaculties.includes(filterFakultas))
-    : list;
+      ? facultyAsalFilteredList.filter((mentor) => !mentor.mentoredFaculties.length)
+      : facultyAsalFilteredList.filter((mentor) => mentor.mentoredFaculties.includes(filterFakultas))
+    : facultyAsalFilteredList;
   const loginFilteredList = filterLogin === "never"
     ? facultyFilteredList.filter((user) => user.mustChangePassword)
     : facultyFilteredList;
   const normalizedQuery = searchQuery.trim().toLocaleLowerCase("id");
+  const activeFilterCount = Number(filterFakultasAsal !== "all")
+    + Number(tab === "MENTOR" && filterFakultas !== "all")
+    + Number(filterLogin !== "all");
   const filteredList = normalizedQuery
     ? loginFilteredList.filter((user) =>
         [user.name, user.username, user.email ?? "", user.faculty ?? "", ...user.mentoredFaculties]
@@ -116,7 +153,7 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
   };
 
   /* ---------- edit ---------- */
-  const openEdit = (u: UserRow) => { setEditUser(u); setEditForm({ name: u.name, email: u.email || "", faculty: u.faculty || FACULTIES[0] }); };
+  const openEdit = (u: UserRow) => { setEditUser(u); setEditForm({ name: u.name, email: u.email || "", faculty: u.faculty ? normalizeFaculty(u.faculty) : FACULTIES[0] }); };
   const submitEdit = async () => {
     if (!editUser) return;
     setSaving(true);
@@ -317,34 +354,26 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
           </label>
           <div className="flex gap-2">
             {(["MENTOR", "PJ"] as Role[]).map((r) => (
-              <button key={r} onClick={() => { setTab(r); setFilterFakultas("all"); setPage(1); setSelectedUserIds([]); }} className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${
+              <button key={r} onClick={() => { setTab(r); setFilterFakultas("all"); setFilterFakultasAsal("all"); setPage(1); setSelectedUserIds([]); }} className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${
                 tab === r ? "bg-primary-soft dark:bg-primary-darkSoft border-primary text-primary-hover dark:text-primary-dark" : "border-[#dcefe2] dark:border-[#1d3527] text-gray-500"
               }`}>{ROLE_LABEL[r]}</button>
             ))}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {tab === "MENTOR" && (
-            <select
-              value={filterFakultas}
-              onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); setSelectedUserIds([]); }}
-              aria-label="Filter fakultas binaan"
-              className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary w-56"
-            >
-              <option value="all">Semua Fakultas Binaan</option>
-              <option value="unassigned">Belum Ditugaskan</option>
-              {mentorFacultyOptions.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
-            </select>
-          )}
-          <select
-            value={filterLogin}
-            onChange={(e) => { setFilterLogin(e.target.value); setPage(1); setSelectedUserIds([]); }}
-            aria-label="Filter status login"
-            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent text-sm outline-none focus:border-primary"
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            aria-haspopup="dialog"
+            className="flex items-center gap-2 rounded-lg border border-[#dcefe2] px-3 py-2 text-xs font-bold dark:border-[#1d3527]"
           >
-            <option value="all">Semua Status Login</option>
-            <option value="never">Belum login / password awal belum diganti</option>
-          </select>
+            <SlidersHorizontal size={14} /> Filter
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-primary-soft px-1.5 py-0.5 text-[10px] text-primary-hover dark:bg-primary-darkSoft dark:text-primary-dark">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
           <button onClick={() => { setImportError(""); setImportRows([]); setImportOpen(true); }} className="flex items-center gap-1.5 text-xs font-bold border border-[#dcefe2] dark:border-[#1d3527] rounded-lg px-3 py-2">
             <Upload size={14} /> Impor Excel
           </button>
@@ -353,6 +382,69 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
           </button>
         </div>
       </div>
+
+      <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter Pengguna">
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold text-gray-500">Fakultas Asal</span>
+            <select
+              value={filterFakultasAsal}
+              onChange={(e) => { setFilterFakultasAsal(e.target.value); setPage(1); setSelectedUserIds([]); }}
+              aria-label="Filter fakultas asal"
+              className="w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-primary dark:border-gray-700"
+            >
+              <option value="all">Semua Fakultas Asal</option>
+              <option value="unassigned">Belum diisi</option>
+              {facultyAsalOptions.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
+            </select>
+          </label>
+          {tab === "MENTOR" && (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold text-gray-500">Fakultas Binaan</span>
+              <select
+                value={filterFakultas}
+                onChange={(e) => { setFilterFakultas(e.target.value); setPage(1); setSelectedUserIds([]); }}
+                aria-label="Filter fakultas binaan"
+                className="w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-primary dark:border-gray-700"
+              >
+                <option value="all">Semua Fakultas Binaan</option>
+                <option value="unassigned">Belum Ditugaskan</option>
+                {mentorFacultyOptions.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold text-gray-500">Status Login</span>
+            <select
+              value={filterLogin}
+              onChange={(e) => { setFilterLogin(e.target.value); setPage(1); setSelectedUserIds([]); }}
+              aria-label="Filter status login"
+              className="w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-primary dark:border-gray-700"
+            >
+              <option value="all">Semua Status Login</option>
+              <option value="never">Belum login / password awal belum diganti</option>
+            </select>
+          </label>
+          <div className="flex justify-between gap-2 border-t border-[#dcefe2] pt-4 dark:border-[#1d3527]">
+            <button
+              type="button"
+              onClick={() => {
+                setFilterFakultasAsal("all");
+                setFilterFakultas("all");
+                setFilterLogin("all");
+                setPage(1);
+                setSelectedUserIds([]);
+              }}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold dark:border-gray-700"
+            >
+              Hapus filter
+            </button>
+            <button type="button" onClick={() => setFiltersOpen(false)} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+              Selesai
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <div className="bg-white dark:bg-[#0f1c14] border border-[#dcefe2] dark:border-[#1d3527] rounded-2xl overflow-hidden">
         {selectedUserIds.length > 0 && (
@@ -412,14 +504,14 @@ export function UsersClient({ mentors, pjs }: { mentors: UserRow[]; pjs: UserRow
                 </td>
                 {tab === "MENTOR" ? (
                   <>
-                    <td className="px-4 py-2.5">{u.faculty || "-"}</td>
+                    <td className="px-4 py-2.5">{u.faculty ? normalizeFaculty(u.faculty) : "-"}</td>
                     <td className="px-4 py-2.5">
                       {u.mentoredFaculties.length
                         ? u.mentoredFaculties.join(", ")
                         : <span className="text-gray-400">Belum ditugaskan</span>}
                     </td>
                   </>
-                ) : <td className="px-4 py-2.5">{u.faculty || "-"}</td>}
+                ) : <td className="px-4 py-2.5">{u.faculty ? normalizeFaculty(u.faculty) : "-"}</td>}
                 <td className="px-4 py-2.5">
                   {u.active
                     ? <span className="text-[11px] font-bold bg-primary-soft dark:bg-primary-darkSoft text-primary-hover dark:text-primary-dark px-2.5 py-1 rounded-full">Aktif</span>
